@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gossaigaon Bazar - Anti-Scam Rider Terminal</title>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #16a34a;
+      --primary-dark: #15803d;
+      --primary-glow: rgba(22, 163, 74, 0.3);
+      --bg: #050811;
+      --surface: #0f172a;
+      --surface-card: #172238;
+      --surface-light: #202d45;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #24344d;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --bottom-nav-height: 68px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #020409;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-viewport {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      background: var(--bg);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0,0,0,0.8);
+    }
+
+    /* Toast Notification System */
+    #toast-container {
+      position: fixed;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92%;
+      max-width: 430px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: rgba(23, 34, 56, 0.96);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.9rem 1.2rem;
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.55);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      animation: dropIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .toast.success { border-left: 4px solid var(--primary); }
+    .toast.danger { border-left: 4px solid var(--danger); }
+    .toast.info { border-left: 4px solid var(--info); }
+
+    @keyframes dropIn {
+      from { transform: translateY(-30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Auth Screen */
+    #auth-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      max-width: 480px;
+      margin: 0 auto;
+      overflow-y: auto;
+    }
+
+    .brand-hero {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .brand-hero i {
+      font-size: 3.3rem;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      filter: drop-shadow(0 0 14px var(--primary-glow));
+    }
+
+    .brand-hero h1 {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-hero p {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: var(--surface);
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.7rem 0;
+      font-weight: 800;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+
+    .auth-tab.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      font-size: 0.95rem;
+      color: #fff;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0.9rem 1.25rem;
+      border-radius: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+      width: 100%;
+    }
+
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 6px 18px var(--primary-glow); }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-info { background: var(--info); color: #fff; }
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text-main);
+    }
+    .btn-danger { background: var(--danger); color: #fff; }
+
+    .btn-action-lg {
+      padding: 1.15rem;
+      font-size: 1.02rem;
+      border-radius: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 800;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 0.75rem;
+      min-height: 1.2rem;
+    }
+
+    /* Security Ribbon */
+    .security-ribbon {
+      background: #090e1a;
+      color: #38bdf8;
+      padding: 0.4rem 1rem;
+      font-size: 0.68rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Top Rider Header */
+    .rider-header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .rider-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .rider-avatar {
+      width: 44px;
+      height: 44px;
+      background: rgba(22, 163, 74, 0.15);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.25rem;
+      border: 1px solid var(--primary);
+    }
+
+    .online-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.4);
+      padding: 7px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 800;
+      border: 1px solid var(--border);
+    }
+
+    .online-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+    .online-indicator.is-online {
+      background: var(--primary);
+      box-shadow: 0 0 10px var(--primary);
+    }
+
+    /* Live GPS Radar Indicator */
+    #gps-radar-bar {
+      background: rgba(22, 163, 74, 0.15);
+      border-bottom: 1px solid rgba(22, 163, 74, 0.3);
+      padding: 6px 1.25rem;
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: #34d399;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Cash Limit Exceeded Lock Banner */
+    #cash-limit-banner {
+      background: rgba(239, 68, 68, 0.2);
+      border-bottom: 1px solid var(--danger);
+      color: #fca5a5;
+      padding: 0.8rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    /* Approval Banner */
+    .approval-banner {
+      background: rgba(245, 158, 11, 0.15);
+      border-bottom: 1px solid var(--warning);
+      color: #fef08a;
+      padding: 0.8rem 1rem;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      line-height: 1.35;
+    }
+
+    /* Tab Views */
+    .tab-view {
+      flex: 1;
+      padding: 1rem;
+      padding-bottom: calc(var(--bottom-nav-height) + 1.5rem);
+      overflow-y: auto;
+      display: none;
+    }
+
+    .tab-view.active { display: block; }
+
+    /* Order Cards */
+    .delivery-order-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    }
+
+    .order-status-pill {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .pill-ready { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .pill-picked { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+    .pill-out { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
+    .pill-delivered { background: rgba(22, 163, 74, 0.2); color: #34d399; }
+    .pill-cancelled { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    .route-node {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .route-node i {
+      font-size: 1.2rem;
+      margin-top: 3px;
+    }
+
+    .node-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .node-address {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 2px;
+    }
+
+    .action-links-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn-sm {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-decoration: none;
+      background: var(--surface-light);
+      color: #fff;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .action-btn-sm.map-store { background: rgba(59, 130, 246, 0.25); color: #60a5fa; border-color: rgba(59,130,246,0.5); }
+    .action-btn-sm.map-customer { background: linear-gradient(135deg, #16a34a, #15803d); color: #ffffff; border-color: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
+    .action-btn-sm.wa { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16,185,129,0.4); }
+
+    /* Payment Boxes (COD vs UPI) */
+    .payment-box {
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 1rem 0;
+    }
+
+    .payment-box.cod {
+      background: rgba(22, 163, 74, 0.12);
+      border: 1px dashed var(--primary);
+    }
+
+    .payment-box.upi-paid {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid #38bdf8;
+    }
+
+    .payment-box.upi-pending {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px dashed var(--warning);
+    }
+
+    .cod-val {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    /* Location Sharer Box */
+    .location-box {
+      background: var(--bg);
+      border-radius: 14px;
+      padding: 0.9rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    /* OTP Input Box inside Modal */
+    .otp-verify-input {
+      font-family: monospace;
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 8px;
+      text-align: center;
+      background: #090d16;
+      border: 2px solid #38bdf8;
+      color: #38bdf8;
+      border-radius: 14px;
+      padding: 0.75rem;
+      width: 100%;
+      outline: none;
+    }
+
+    /* Cash Bag & Settlement Cards */
+    .cash-hero-card {
+      background: linear-gradient(135deg, #172238, #0f172a);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.4rem;
+      margin-bottom: 1.15rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .earnings-hero-card {
+      background: linear-gradient(135deg, #0e2a47, #0b192e);
+      border: 1.5px solid #38bdf8;
+      border-radius: 20px;
+      padding: 1.35rem;
+      margin-bottom: 1.15rem;
+      box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
+    }
+
+    .earnings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 1.25rem;
+    }
+
+    .earnings-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.15rem 1rem;
+      text-align: center;
+    }
+
+    .earnings-card h4 {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    .earnings-val {
+      font-size: 1.55rem;
+      font-weight: 800;
+    }
+
+    .settlement-badge {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .settlement-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+    .settlement-approved { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      padding: 1.25rem;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      max-width: 420px;
+      width: 100%;
+      padding: 1.5rem;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      max-width: 480px;
+      height: var(--bottom-nav-height);
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.74rem;
+      font-weight: 800;
+    }
+
+    .nav-btn i { font-size: 1.25rem; }
+    .nav-btn.active { color: var(--primary); }
+  </style>
+
+  <!-- Firebase Compat Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <!-- Floating Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- MOBILE VIEWPORT -->
+  <div class="app-viewport">
+
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="auth-screen">
+      <div class="brand-hero">
+        <i class="fa-solid fa-person-biking"></i>
+        <h1>Gossaigaon Fleet</h1>
+        <p>🛡️ Turn-By-Turn GPS Delivery Partner Terminal</p>
+      </div>
+
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login-btn" onclick="toggleAuthTab('login')">Sign In</div>
+        <div class="auth-tab" id="tab-signup-btn" onclick="toggleAuthTab('signup')">Register Rider</div>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="login-form">
+        <div class="form-group">
+          <label>Registered Email</label>
+          <input type="email" id="login-email" class="form-input" placeholder="rider@gossaigaonbazar.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">
+          <i class="fa-solid fa-shield-halved"></i> Start Protected Shift
+        </button>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form id="signup-form" style="display: none;">
+        <div class="form-group">
+          <label>Rider Full Name</label>
+          <input type="text" id="signup-name" class="form-input" placeholder="e.g. Bipin Brahma" required>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="signup-email" class="form-input" placeholder="rider@gmail.com" required>
+        </div>
+        <div class="form-group">
+          <label>10-Digit Mobile Number</label>
+          <input type="tel" id="signup-phone" class="form-input" placeholder="9876543210" maxlength="10" required>
+        </div>
+        <div class="form-group">
+          <label>Vehicle Details (Bike / Scooter / Cycle)</label>
+          <input type="text" id="signup-vehicle" class="form-input" placeholder="Hero Splendor - AS-16-XXXX" required>
+        </div>
+        <div class="form-group">
+          <label>Set Password</label>
+          <input type="password" id="signup-password" class="form-input" placeholder="••••••••" minlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">
+          <i class="fa-solid fa-id-card"></i> Register Rider Account
+        </button>
+      </form>
+
+      <div class="error-msg" id="auth-error"></div>
+    </div>
+
+    <!-- MAIN APP VIEW -->
+    <div class="security-ribbon">
+      <i class="fa-solid fa-satellite"></i> Live GPS Radar & Doorstep Route Guidance Active
+    </div>
+
+    <!-- Top Rider Header -->
+    <header class="rider-header">
+      <div class="rider-meta">
+        <div class="rider-avatar">
+          <i class="fa-solid fa-motorcycle"></i>
+        </div>
+        <div>
+          <h4 id="header-rider-name" style="font-weight: 800; font-size: 1rem;">Gossaigaon Rider</h4>
+          <span id="header-rider-vehicle" style="font-size: 0.74rem; color: var(--text-muted);">Vehicle</span>
+        </div>
+      </div>
+      <div class="online-toggle" onclick="toggleDutyStatus()">
+        <div class="online-indicator" id="status-indicator"></div>
+        <span id="status-label">Offline</span>
+      </div>
+    </header>
+
+    <!-- Realtime Live GPS Broadcasting Bar -->
+    <div id="gps-radar-bar">
+      <span><i class="fa-solid fa-satellite-dish fa-spin"></i> LIVE GPS RADAR: ACTIVE</span>
+      <span id="gps-coordinates-text">26.4524° N, 89.9723° E</span>
+    </div>
+
+    <!-- Floating Cash Limit Exceeded Warning -->
+    <div id="cash-limit-banner">
+      <div>
+        <i class="fa-solid fa-lock"></i> <strong>CASH LIMIT EXCEEDED (₹3,000+):</strong> Deposit COD cash to Admin to unlock pickups!
+      </div>
+      <button class="btn btn-danger btn-sm" style="width:auto; padding:4px 10px;" onclick="switchNav('earnings'); openDepositModal();">Deposit</button>
+    </div>
+
+    <!-- Admin Approval Notice Banner -->
+    <div id="approval-banner" class="approval-banner" style="display: none;">
+      <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem; color: var(--warning);"></i>
+      <div>
+        <strong>Approval Pending:</strong> Your account is under verification by Gossaigaon Bazar Admin.
+      </div>
+    </div>
+
+    <!-- TAB 1: ACTIVE ASSIGNED DELIVERIES -->
+    <div id="tab-active" class="tab-view active">
+      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+        <span>Assigned Grocery Trips</span>
+        <span id="active-count-badge" style="font-size: 0.75rem; background: var(--surface-light); padding: 4px 10px; border-radius: 12px; font-weight: 800;">0 Active</span>
+      </h3>
+
+      <div id="active-orders-container">
+        <p style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+          <i class="fa-solid fa-cart-flatbed" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; display: block;"></i>
+          No assigned grocery trips. Turn <strong>Online</strong> to receive instant auto-assignments!
+        </p>
+      </div>
+    </div>
+
+    <!-- TAB 2: RIDER EARNINGS, PAYOUT WITHDRAWAL & CASH BAG -->
+    <div id="tab-earnings" class="tab-view">
+      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Wallet, Cash Bag & Handover</h3>
+
+      <!-- Rider Earnings Hero Card with Payout / Withdraw Button -->
+      <div class="earnings-hero-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+          <div>
+            <span style="font-size: 0.72rem; color: #38bdf8; text-transform: uppercase; font-weight: 800;">
+              <i class="fa-solid fa-wallet"></i> Available Earnings for Payout
+            </span>
+            <div id="summary-available-payout" style="font-size: 1.95rem; font-weight: 800; color: #38bdf8;">₹0.00</div>
+            <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
+              Total Delivery Fees: <strong id="summary-rider-commission" style="color:#fff;">₹0</strong> <small id="rider-fee-rate-hint" style="color:var(--text-muted);">(₹25 per trip)</small>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="background:#0284c7; width:auto; border:none;" onclick="openRiderPayoutModal()">
+            <i class="fa-solid fa-money-bill-transfer"></i> Withdraw
+          </button>
+        </div>
+
+        <div style="border-top: 1px solid rgba(56, 189, 248, 0.2); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted);">
+          <span>Completed Trips: <strong id="summary-total-trips" style="color:#fff;">0</strong></span>
+          <span>Paid by Admin: <strong id="summary-total-payout-paid" style="color:var(--success);">₹0.00</strong></span>
+        </div>
+      </div>
+
+      <!-- Cash in Hand Hero Box -->
+      <div class="cash-hero-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+          <div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Admin COD Cash in Hand (Max ₹3,000)</span>
+            <div id="summary-cash-in-hand" style="font-size: 1.95rem; font-weight: 800; color: var(--primary);">₹0.00</div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="background:#22c55e; width:auto;" onclick="openDepositModal()">
+            <i class="fa-solid fa-hand-holding-dollar"></i> Deposit to Admin
+          </button>
+        </div>
+
+        <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted);">
+          <span>Total COD Collected: <strong id="summary-total-cod" style="color:#fff;">₹0.00</strong></span>
+          <span>Settled to Admin: <strong id="summary-total-deposited" style="color:var(--success);">₹0.00</strong></span>
+        </div>
+      </div>
+
+      <!-- Earnings Payout Requests History -->
+      <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem;">Earnings Payout History (Withdrawals)</h4>
+      <div id="payout-history-container">
+        <p style="text-align: center; color: var(--text-muted); padding: 1rem;">No earnings withdrawal requests yet.</p>
+      </div>
+
+      <!-- Settlement History Log -->
+      <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">Settlement Log (Admin Handover)</h4>
+      <div id="settlement-history-container">
+        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No deposit requests submitted yet.</p>
+      </div>
+
+      <!-- Delivered & Cancelled Trips Log -->
+      <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">Past Trips & Cancelled Log</h4>
+      <div id="completed-orders-container">
+        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No past orders yet.</p>
+      </div>
+    </div>
+
+    <!-- TAB 3: RIDER PROFILE -->
+    <div id="tab-profile" class="tab-view">
+      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Rider Profile & Vehicle</h3>
+
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1.25rem; margin-bottom: 1.25rem;">
+        <form id="profile-form">
+          <div class="form-group">
+            <label>Driver Full Name</label>
+            <input type="text" id="prof-name" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label>Registered Email</label>
+            <input type="email" id="prof-email" class="form-input" disabled style="background:#090d16; color:var(--text-muted);">
+          </div>
+          <div class="form-group">
+            <label>10-Digit Mobile Number</label>
+            <input type="tel" id="prof-phone" class="form-input" maxlength="10" required>
+          </div>
+          <div class="form-group">
+            <label>Payout Receiving UPI ID</label>
+            <input type="text" id="prof-upi" class="form-input" placeholder="e.g. 9876543210@paytm">
+          </div>
+          <div class="form-group">
+            <label>Vehicle Information</label>
+            <input type="text" id="prof-vehicle" class="form-input" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">
+            <i class="fa-solid fa-floppy-disk"></i> Save Details
+          </button>
+        </form>
+      </div>
+
+      <button class="btn btn-outline" onclick="riderLogout()" style="color: var(--danger); border-color: var(--danger);">
+        <i class="fa-solid fa-right-from-bracket"></i> End Shift & Sign Out
+      </button>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="switchNav('active')">
+        <i class="fa-solid fa-location-arrow"></i>
+        <span>Active Trips</span>
+      </button>
+      <button class="nav-btn" onclick="switchNav('earnings')">
+        <i class="fa-solid fa-wallet"></i>
+        <span>Wallet & Cash</span>
+      </button>
+      <button class="nav-btn" onclick="switchNav('profile')">
+        <i class="fa-solid fa-user-shield"></i>
+        <span>Profile</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- RIDER PAYOUT WITHDRAWAL MODAL -->
+  <div class="modal-backdrop" id="riderPayoutModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-weight: 800; font-size: 1.15rem; color:#38bdf8;">Withdraw Earnings to UPI</h3>
+        <i class="fa-solid fa-xmark" onclick="closeRiderPayoutModal()" style="font-size: 1.2rem; cursor: pointer;"></i>
+      </div>
+
+      <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; border-radius: 14px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
+        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Available Payout Balance</span>
+        <div id="modal-available-payout-display" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;">₹0.00</div>
+      </div>
+
+      <div class="form-group">
+        <label>Enter Amount to Withdraw (₹)</label>
+        <input type="number" id="payout-amount-input" class="form-input" placeholder="e.g. 500" min="10" required>
+      </div>
+
+      <div class="form-group">
+        <label>Verify Your Receiving UPI ID <span style="color:red;">*</span></label>
+        <input type="text" id="payout-upi-input" class="form-input" placeholder="e.g. 9876543210@paytm" required>
+      </div>
+
+      <button class="btn btn-primary" style="background:#0284c7;" onclick="submitRiderPayoutRequest()">
+        <i class="fa-solid fa-paper-plane"></i> Submit Withdrawal Request
+      </button>
+    </div>
+  </div>
+
+  <!-- DELIVERY VERIFICATION MODAL (4-DIGIT OTP + BRUTE FORCE GUARD) -->
+  <div class="modal-backdrop" id="deliveryVerifyModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="font-weight: 800; font-size: 1.15rem;">Verify PIN & Complete</h3>
+        <i class="fa-solid fa-xmark" onclick="closeVerifyModal()" style="cursor: pointer; font-size: 1.2rem;"></i>
+      </div>
+
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;" id="verify-modal-order-label">
+        Order: #...
+      </p>
+
+      <div style="background: rgba(56, 189, 248, 0.08); border: 1px dashed #38bdf8; border-radius: 14px; padding: 1rem; margin-bottom: 1rem; text-align: center;">
+        <label style="font-size: 0.75rem; font-weight: 800; color: #38bdf8; text-transform: uppercase; display: block; margin-bottom: 8px;">
+          🔐 Enter Customer's 4-Digit Delivery PIN
+        </label>
+        <input type="text" id="verify-otp-input" class="otp-verify-input" placeholder="----" maxlength="4">
+        <small id="pin-attempts-warning" style="color:var(--warning); font-size:0.72rem; font-weight:700; display:block; margin-top:6px;">
+          Max 3 attempts allowed before 60s security lock.
+        </small>
+      </div>
+
+      <div id="verify-cod-section">
+        <div style="background: rgba(22, 163, 74, 0.12); border-radius: 12px; padding: 0.85rem; text-align: center; margin-bottom: 0.85rem;">
+          <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">COD Cash to Collect (Incl. Delivery Fee)</span>
+          <div id="verify-modal-bill-amt" style="font-size: 1.65rem; font-weight: 800; color: var(--primary);">₹0.00</div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.65rem;">
+          <label>Cash Given by Customer (Optional Change Calc)</label>
+          <input type="number" id="cash-tendered" class="form-input" placeholder="e.g. 500" oninput="calculateChange()">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; font-size: 0.9rem; font-weight: 800; margin-bottom: 0.85rem;">
+          <span>Change to Return:</span>
+          <span id="cash-change-return" style="color: var(--warning);">₹0.00</span>
+        </div>
+      </div>
+
+      <input type="hidden" id="verify-modal-order-id">
+      <input type="hidden" id="verify-modal-target-amt">
+
+      <button class="btn btn-success" id="btn-confirm-pin-delivery" onclick="confirmPinAndCompleteDelivery()">
+        <i class="fa-solid fa-shield-check"></i> Verify PIN & Mark Delivered
+      </button>
+    </div>
+  </div>
+
+  <!-- DEPOSIT CASH TO ADMIN MODAL -->
+  <div class="modal-backdrop" id="depositModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-weight: 800; font-size: 1.15rem;">Deposit Cash to Admin</h3>
+        <i class="fa-solid fa-xmark" onclick="closeDepositModal()" style="font-size: 1.2rem; cursor: pointer;"></i>
+      </div>
+
+      <div style="background: rgba(22, 163, 74, 0.1); border: 1px solid var(--primary); border-radius: 14px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
+        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Current Cash to Deposit</span>
+        <div id="modal-deposit-amount-display" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">₹0.00</div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
+        <button type="button" id="btn-dep-mode-upi" class="btn btn-primary btn-sm" style="flex:1;" onclick="selectDepositMode('UPI')">
+          <i class="fa-solid fa-qrcode"></i> Pay via UPI
+        </button>
+        <button type="button" id="btn-dep-mode-cash" class="btn btn-outline btn-sm" style="flex:1;" onclick="selectDepositMode('CASH')">
+          <i class="fa-solid fa-hand-holding-dollar"></i> Office Handover
+        </button>
+      </div>
+
+      <div id="deposit-upi-box" style="text-align: center;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">
+          Admin UPI ID: <strong id="deposit-admin-upi-id" style="color:#38bdf8;">gossaigaonbazar@apl</strong>
+        </p>
+        <img src="" id="deposit-qr-img" style="width: 160px; height: 160px; border-radius: 12px; background:#fff; padding:6px; margin: 0 auto 0.75rem;" alt="Admin UPI QR">
+        
+        <div class="form-group" style="text-align: left; margin-bottom: 1rem;">
+          <label>Enter Exact 12-Digit UPI UTR No. <span style="color:red;">*</span></label>
+          <input type="text" id="deposit-utr" class="form-input" placeholder="e.g. 412893471923" maxlength="12" style="font-weight:800; letter-spacing:1px;">
+        </div>
+      </div>
+
+      <div id="deposit-cash-box" style="display: none; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+        <i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> Hand over the exact cash amount at Gossaigaon Bazar Main Office / Hub. Admin will verify and approve this request.
+      </div>
+
+      <button class="btn btn-success" onclick="submitCashSettlement()">
+        <i class="fa-solid fa-paper-plane"></i> Submit Verified Handover
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. FIREBASE CONFIGURATION (Verified)
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyCuJLxRCdhAVZoN81-5weEFnSU4nDr98lo",
+      authDomain: "test-2a0d0.firebaseapp.com",
+      databaseURL: "https://test-2a0d0-default-rtdb.firebaseio.com",
+      projectId: "test-2a0d0",
+      storageBucket: "test-2a0d0.firebasestorage.app",
+      messagingSenderId: "396740286096",
+      appId: "1:396740286096:web:430751766ca9c384946a15",
+      measurementId: "G-W05VPQX3V2"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // ==========================================
+    // 2. STATE & LOCATION TRACKING VARIABLES
+    // ==========================================
+    let currentUser = null;
+    let riderData = null;
+    let assignedOrders = {};
+    let stores = {};
+    let allSettlements = {};
+    let riderSettlements = {};
+    let allRiderPayouts = {};
+    let myRiderPayouts = {};
+    let adminUpiId = "gossaigaonbazar@apl";
+    let prevActiveTripCount = null;
+    let prevCancelledCount = null;
+    let geoWatchId = null;
+    let currentDepositMode = "UPI";
+    let netCashInHand = 0;
+    let totalRiderDeliveryFees = 0;
+    let totalPayoutPaid = 0;
+    let availablePayoutBalance = 0;
+    let baseRiderFeePerTrip = 25;
+    const MAX_ALLOWED_CASH_LIMIT = 3000;
+
+    // Real-time current rider GPS coordinates
+    let riderCurrentLat = 26.4524;
+    let riderCurrentLng = 89.9723;
+
+    let pinBruteForceGuard = {};
+
+    function sanitizeText(str) {
+      return String(str || '').replace(/[<>"'`]/g, '');
+    }
+
+    function isValidIndianMobile(phone) {
+      const cleaned = String(phone || '').replace(/\D/g, '').slice(-10);
+      return /^[6-9]\d{9}$/.test(cleaned);
+    }
+
+    function isValidUpiId(upi) {
+      return /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(String(upi || '').trim());
+    }
+
+    function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+      if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+      const R = 6371;
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    function validateSettlementUtr(utr) {
+      const cleanUtr = String(utr || '').trim();
+      if (!/^\d{12}$/.test(cleanUtr)) {
+        return { valid: false, reason: 'UTR number exact 12 digits ka hona chahiye!' };
+      }
+      if (/^(\d)\1{11}$/.test(cleanUtr) || cleanUtr === '123456789012' || cleanUtr.startsWith('0000')) {
+        return { valid: false, reason: '🚨 Scam Alert: Fake UTR pattern allowed nahi hai!' };
+      }
+      const isDuplicate = Object.values(allSettlements).some(s => String(s.utr || '').trim() === cleanUtr);
+      if (isDuplicate) {
+        return { valid: false, reason: '🚨 FRAUD BLOCKED: Yeh UTR number pehle use ho chuka hai!' };
+      }
+      return { valid: true };
+    }
+
+    function showToast(msg, type = 'success') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<i class="fa-solid fa-shield-halved"></i> <span>${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4500);
+    }
+
+    function playAssignmentChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(783.99, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    function getRiderFeeForOrder(order) {
+      if (order && order.deliveryCharge !== undefined && Number(order.deliveryCharge) > 0) {
+        return Number(order.deliveryCharge);
+      }
+      return baseRiderFeePerTrip;
+    }
+
+    // ==========================================
+    // 3. AUTHENTICATION
+    // ==========================================
+    const authScreen = document.getElementById('auth-screen');
+    const authError = document.getElementById('auth-error');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+
+    function toggleAuthTab(type) {
+      authError.textContent = '';
+      if (type === 'login') {
+        document.getElementById('tab-login-btn').classList.add('active');
+        document.getElementById('tab-signup-btn').classList.remove('active');
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+      } else {
+        document.getElementById('tab-signup-btn').classList.add('active');
+        document.getElementById('tab-login-btn').classList.remove('active');
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+      }
+    }
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      authError.textContent = '';
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      auth.signInWithEmailAndPassword(email, password).catch(err => authError.textContent = err.message);
+    });
+
+    signupForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      authError.textContent = '';
+      const name = sanitizeText(document.getElementById('signup-name').value.trim());
+      const email = document.getElementById('signup-email').value.trim();
+      const phone = document.getElementById('signup-phone').value.trim();
+      const vehicle = sanitizeText(document.getElementById('signup-vehicle').value.trim());
+      const password = document.getElementById('signup-password').value;
+
+      if (!isValidIndianMobile(phone)) {
+        authError.textContent = 'Please enter a valid 10-digit Indian mobile number!';
+        return;
+      }
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then((cred) => {
+          return db.ref('deliveryPartners/' + cred.user.uid).set({
+            name, email, phone, vehicle,
+            approved: false,
+            online: true,
+            lat: 26.4524,
+            lng: 89.9723
+          });
+        })
+        .catch(err => authError.textContent = err.message);
+    });
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        authScreen.style.display = 'none';
+        initDeliveryApp();
+      } else {
+        currentUser = null;
+        riderData = null;
+        if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
+        authScreen.style.display = 'flex';
+      }
+    });
+
+    function riderLogout() {
+      if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
+      db.ref('deliveryPartners/' + currentUser.uid).update({ online: false });
+      auth.signOut();
+    }
+
+    // ==========================================
+    // 4. DATA SYNC & CONTINUOUS GPS BROADCAST
+    // ==========================================
+    function initDeliveryApp() {
+      db.ref('deliveryPartners/' + currentUser.uid).on('value', snap => {
+        riderData = snap.val() || {};
+        updateHeaderAndProfileUI();
+
+        if (riderData.online && !geoWatchId) {
+          startLiveGpsTracking();
+        }
+      });
+
+      db.ref('restaurants').on('value', snap => {
+        stores = snap.val() || {};
+        renderOrdersFeed();
+      });
+
+      db.ref('admin/settings').on('value', snap => {
+        const s = snap.val() || {};
+        if (s.upiId) {
+          adminUpiId = s.upiId;
+          document.getElementById('deposit-admin-upi-id').textContent = adminUpiId;
+        }
+        if (s.deliveryCharge !== undefined && Number(s.deliveryCharge) > 0) {
+          baseRiderFeePerTrip = Number(s.deliveryCharge);
+          document.getElementById('rider-fee-rate-hint').textContent = `(₹${baseRiderFeePerTrip} base delivery fee)`;
+        }
+        calculateEarnings();
+        renderOrdersFeed();
+      });
+
+      // ORIGINAL WORKING ORDERS LISTENER (UNTOUCHED)
+      db.ref('orders').on('value', snap => {
+        const allOrders = snap.val() || {};
+        const myOrders = {};
+
+        Object.entries(allOrders).forEach(([id, o]) => {
+          if (o.deliveryUid === currentUser.uid) {
+            myOrders[id] = o;
+          }
+        });
+
+        const activeCount = Object.values(myOrders).filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length;
+        const cancelledCount = Object.values(myOrders).filter(o => o.status === 'CANCELLED').length;
+
+        if (prevActiveTripCount !== null && activeCount > prevActiveTripCount) {
+          playAssignmentChime();
+          showToast('🔔 New grocery delivery trip assigned!', 'success');
+        }
+        if (prevCancelledCount !== null && cancelledCount > prevCancelledCount) {
+          showToast('❌ Alert: An assigned order was CANCELLED by Customer/Admin!', 'danger');
+        }
+
+        prevActiveTripCount = activeCount;
+        prevCancelledCount = cancelledCount;
+
+        assignedOrders = myOrders;
+        calculateEarnings();
+        renderOrdersFeed();
+      });
+
+      db.ref('settlements').on('value', snap => {
+        allSettlements = snap.val() || {};
+        riderSettlements = {};
+        Object.entries(allSettlements).forEach(([id, s]) => {
+          if (s.riderUid === currentUser.uid) {
+            riderSettlements[id] = s;
+          }
+        });
+        renderSettlementHistory();
+        calculateEarnings();
+        renderOrdersFeed();
+      });
+
+      // Rider Payout Withdrawal History Listener
+      db.ref('riderPayouts').on('value', snap => {
+        allRiderPayouts = snap.val() || {};
+        myRiderPayouts = {};
+        Object.entries(allRiderPayouts).forEach(([id, p]) => {
+          if (p.riderUid === currentUser.uid) {
+            myRiderPayouts[id] = p;
+          }
+        });
+        renderRiderPayoutHistory();
+        calculateEarnings();
+      });
+    }
+
+    function startLiveGpsTracking() {
+      if (!navigator.geolocation) return;
+      document.getElementById('gps-radar-bar').style.display = 'flex';
+
+      geoWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          riderCurrentLat = Number(pos.coords.latitude.toFixed(6));
+          riderCurrentLng = Number(pos.coords.longitude.toFixed(6));
+          const accuracy = Math.round(pos.coords.accuracy);
+
+          document.getElementById('gps-coordinates-text').textContent = `${riderCurrentLat}° N, ${riderCurrentLng}° E (±${accuracy}m)`;
+
+          // 1. Broadcast to Rider Profile in Firebase
+          db.ref('deliveryPartners/' + currentUser.uid).update({
+            lat: riderCurrentLat,
+            lng: riderCurrentLng,
+            online: true,
+            lastSeen: Date.now()
+          });
+
+          // 2. Broadcast directly into active customer order so customer tracks rider movement
+          Object.entries(assignedOrders).forEach(([orderId, o]) => {
+            if (o.status === 'OUT_FOR_DELIVERY') {
+              db.ref(`orders/${orderId}`).update({
+                riderLat: riderCurrentLat,
+                riderLng: riderCurrentLng,
+                lastLocationUpdate: Date.now()
+              });
+            }
+          });
+        },
+        (err) => console.log("GPS Track Error:", err),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+      );
+    }
+
+    function stopLiveGpsTracking() {
+      if (geoWatchId) {
+        navigator.geolocation.clearWatch(geoWatchId);
+        geoWatchId = null;
+      }
+      document.getElementById('gps-radar-bar').style.display = 'none';
+    }
+
+    function updateHeaderAndProfileUI() {
+      if (!riderData) return;
+
+      document.getElementById('header-rider-name').textContent = riderData.name || 'Gossaigaon Rider';
+      document.getElementById('header-rider-vehicle').textContent = riderData.vehicle || 'Bike';
+
+      const indicator = document.getElementById('status-indicator');
+      const label = document.getElementById('status-label');
+      if (riderData.online) {
+        indicator.classList.add('is-online');
+        label.textContent = 'Online';
+      } else {
+        indicator.classList.remove('is-online');
+        label.textContent = 'Offline';
+        stopLiveGpsTracking();
+      }
+
+      const banner = document.getElementById('approval-banner');
+      banner.style.display = riderData.approved === true ? 'none' : 'flex';
+
+      document.getElementById('prof-name').value = riderData.name || '';
+      document.getElementById('prof-email').value = currentUser.email || '';
+      document.getElementById('prof-phone').value = riderData.phone || '';
+      if (document.getElementById('prof-upi')) {
+        document.getElementById('prof-upi').value = riderData.upiId || '';
+      }
+      document.getElementById('prof-vehicle').value = riderData.vehicle || '';
+    }
+
+    function toggleDutyStatus() {
+      if (!riderData) return;
+      const newStatus = !riderData.online;
+
+      if (newStatus && netCashInHand >= MAX_ALLOWED_CASH_LIMIT) {
+        showToast('🛑 Cash Limit ₹3,000 Exceeded! Deposit cash to Admin before going Online.', 'danger');
+        return;
+      }
+
+      if (newStatus) {
+        startLiveGpsTracking();
+      } else {
+        stopLiveGpsTracking();
+      }
+
+      db.ref('deliveryPartners/' + currentUser.uid).update({ online: newStatus }).then(() => {
+        showToast(newStatus ? 'Duty ON: Live GPS tracking shuru!' : 'Duty OFF: Aap Offline ho gaye.', newStatus ? 'success' : 'info');
+      });
+    }
+
+    document.getElementById('profile-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = sanitizeText(document.getElementById('prof-name').value.trim());
+      const phone = document.getElementById('prof-phone').value.trim();
+      const upiId = document.getElementById('prof-upi') ? document.getElementById('prof-upi').value.trim() : '';
+      const vehicle = sanitizeText(document.getElementById('prof-vehicle').value.trim());
+
+      if (!isValidIndianMobile(phone)) {
+        showToast('Please enter a valid 10-digit mobile number!', 'danger');
+        return;
+      }
+
+      db.ref('deliveryPartners/' + currentUser.uid).update({ name, phone, upiId, vehicle }).then(() => {
+        showToast('Rider profile updated!', 'success');
+      });
+    });
+
+    // ==========================================
+    // 5. ACTIVE ORDERS FEED & ORIGINAL ROUTING (UNTOUCHED)
+    // ==========================================
+    function renderOrdersFeed() {
+      const activeContainer = document.getElementById('active-orders-container');
+      const completedContainer = document.getElementById('completed-orders-container');
+
+      activeContainer.innerHTML = '';
+      completedContainer.innerHTML = '';
+
+      const entries = Object.entries(assignedOrders).sort((a,b) => (b[1].updatedAt || b[1].createdAt || 0) - (a[1].updatedAt || a[1].createdAt || 0));
+
+      let activeCount = 0;
+      let pastCount = 0;
+
+      entries.forEach(([orderId, o]) => {
+        const store = stores[o.restaurantId] || {};
+        const isCompleted = o.status === 'DELIVERED' || o.status === 'CANCELLED';
+
+        if (!isCompleted) {
+          activeCount++;
+          activeContainer.innerHTML += renderActiveCard(orderId, o, store);
+        } else {
+          pastCount++;
+          completedContainer.innerHTML += renderPastCard(orderId, o, store);
+        }
+      });
+
+      document.getElementById('active-count-badge').textContent = `${activeCount} Active`;
+
+      if (activeCount === 0) {
+        activeContainer.innerHTML = `
+          <p style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+            <i class="fa-solid fa-cart-flatbed" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; display: block;"></i>
+            No active grocery trips in progress. Turn <strong>Online</strong> to receive auto-dispatches!
+          </p>
+        `;
+      }
+
+      if (pastCount === 0) {
+        completedContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No past orders yet.</p>';
+      }
+    }
+
+    function renderActiveCard(orderId, o, store) {
+      const itemsList = (o.items || []).map(i => `${i.qty}× ${escapeHtml(i.name)}`).join(', ');
+      const tripFee = getRiderFeeForOrder(o);
+      const subAmt = Number(o.subtotalAmount || o.totalAmount || 0);
+      const delCharge = Number(o.deliveryCharge || 0);
+
+      let statusPill = `<span class="order-status-pill pill-ready">${o.status}</span>`;
+      if (o.status === 'PICKED_UP') statusPill = `<span class="order-status-pill pill-picked">PICKED UP</span>`;
+      if (o.status === 'OUT_FOR_DELIVERY') statusPill = `<span class="order-status-pill pill-out">OUT FOR DELIVERY</span>`;
+
+      const isUpi = o.paymentMode === 'UPI';
+      const isUpiPaid = isUpi && o.paymentStatus === 'VERIFIED';
+      const isUpiPending = isUpi && o.paymentStatus !== 'VERIFIED';
+      const isCashCapLocked = netCashInHand >= MAX_ALLOWED_CASH_LIMIT && !isUpi;
+
+      let actionButtonHtml = '';
+      if (riderData?.approved !== true) {
+        actionButtonHtml = `<button class="btn btn-outline" disabled style="opacity:0.5;">Account Approval Pending from Admin</button>`;
+      } else if (isCashCapLocked && o.status === 'PLACED') {
+        actionButtonHtml = `<button class="btn btn-danger btn-action-lg" onclick="switchNav('earnings'); openDepositModal();">🚨 Cash Limit ₹3,000 Exceeded - Deposit First</button>`;
+      } else if (o.status === 'READY_FOR_PICKUP' || o.status === 'ACCEPTED' || o.status === 'PREPARING' || o.status === 'PACKING' || o.status === 'PLACED') {
+        actionButtonHtml = `
+          <button class="btn btn-primary btn-action-lg" onclick="updateOrderStatus('${orderId}', 'PICKED_UP')">
+            <i class="fa-solid fa-box"></i> Confirm Grocery Picked Up
+          </button>
+        `;
+      } else if (o.status === 'PICKED_UP') {
+        actionButtonHtml = `
+          <button class="btn btn-info btn-action-lg" onclick="updateOrderStatus('${orderId}', 'OUT_FOR_DELIVERY')">
+            <i class="fa-solid fa-motorcycle"></i> Start Doorstep Delivery Route
+          </button>
+        `;
+      } else if (o.status === 'OUT_FOR_DELIVERY') {
+        if (isUpiPending) {
+          actionButtonHtml = `
+            <button class="btn btn-outline btn-action-lg" style="border-color:var(--warning); color:var(--warning);" onclick="showToast('⚠️ Hold Delivery! Customer UPI is not verified by Admin yet.', 'danger')">
+              <i class="fa-solid fa-lock"></i> Hold: Waiting for Admin UPI Verify
+            </button>
+          `;
+        } else {
+          actionButtonHtml = `
+            <button class="btn btn-success btn-action-lg" onclick="openVerifyModal('${orderId}', ${Number(o.totalAmount || 0)}, ${isUpiPaid})">
+              <i class="fa-solid fa-key"></i> Enter Customer PIN & Deliver
+            </button>
+          `;
+        }
+      }
+
+      let paymentBoxHtml = '';
+      if (isUpiPaid) {
+        paymentBoxHtml = `
+          <div class="payment-box upi-paid">
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: #38bdf8;">
+                <i class="fa-solid fa-check-double"></i> PREPAID ONLINE (UPI)
+              </div>
+              <div style="font-size: 0.85rem; font-weight: 800; color: #fff;">Do NOT Collect Cash! Verify PIN Only.</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Items: ₹${subAmt.toFixed(0)} | Del Fee: ₹${delCharge.toFixed(0)}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: #38bdf8;">Paid</div>
+              <div style="font-size: 1.45rem; font-weight: 800; color: #38bdf8;">₹${Number(o.totalAmount || 0).toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      } else if (isUpiPending) {
+        paymentBoxHtml = `
+          <div class="payment-box upi-pending">
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--warning);">
+                <i class="fa-solid fa-triangle-exclamation"></i> UPI PAYMENT UNVERIFIED
+              </div>
+              <div style="font-size: 0.82rem; font-weight: 700; color: #fff;">Do NOT hand over items until Admin verifies!</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--warning);">Amount</div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: var(--warning);">₹${Number(o.totalAmount || 0).toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        paymentBoxHtml = `
+          <div class="payment-box cod">
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted);">
+                <i class="fa-solid fa-money-bill-1-wave"></i> Cash on Delivery (COD)
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                Items: ₹${subAmt.toFixed(0)} + Delivery: ${delCharge === 0 ? 'FREE' : `₹${delCharge.toFixed(0)}`}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight:700;">Collect Cash</div>
+              <div class="cod-val">₹${Number(o.totalAmount || 0).toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // 1. EXACT STORE GPS NAVIGATION LINK
+      const storeMapsLink = (store.lat && store.lng)
+        ? `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`
+        : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((store.name || '') + ' ' + (store.address || 'Gossaigaon'))}`;
+
+      // 2. EXACT CUSTOMER DOORSTEP GPS NAVIGATION LINK
+      const customerMapsLink = (o.customerLat && o.customerLng)
+        ? `https://www.google.com/maps/dir/?api=1&destination=${o.customerLat},${o.customerLng}`
+        : (o.locationLink ? o.locationLink : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address || 'Gossaigaon')}`);
+
+      const cleanCustomerPhone = (o.phone || '').replace(/[^0-9]/g, '');
+
+      // Realtime Distance Calculations
+      const distToStore = (riderCurrentLat && store.lat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, store.lat, store.lng) : null;
+      const distToCustomer = (riderCurrentLat && o.customerLat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, o.customerLat, o.customerLng) : null;
+
+      return `
+        <div class="delivery-order-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.6rem;">
+            <div>
+              <strong style="font-size: 1.05rem;">Trip #${orderId.slice(-6)}</strong>
+              <div style="font-size: 0.74rem; color: #38bdf8; font-weight: 700;">${new Date(o.createdAt || Date.now()).toLocaleTimeString()} • Rider Fee: +₹${tripFee}</div>
+            </div>
+            ${statusPill}
+          </div>
+
+          <!-- Pickup Node -->
+          <div class="route-node">
+            <i class="fa-solid fa-store" style="color: var(--primary);"></i>
+            <div style="flex: 1;">
+              <div class="node-title">
+                <span>Pickup From Store</span>
+                ${distToStore !== null ? `<span style="color:var(--primary);"><i class="fa-solid fa-route"></i> ~${distToStore.toFixed(1)} km</span>` : ''}
+              </div>
+              <div class="node-address">${escapeHtml(store.name || 'Grocery Store')}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(store.address || 'Gossaigaon Area')}</div>
+              <div class="action-links-bar">
+                <a href="${storeMapsLink}" target="_blank" class="action-btn-sm map-store">
+                  <i class="fa-solid fa-diamond-turn-right"></i> Navigate Store
+                </a>
+                ${store.phone ? `<a href="tel:${store.phone}" class="action-btn-sm"><i class="fa-solid fa-phone"></i> Call Store</a>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Deliver to Customer Node with Exact Pinpoint -->
+          <div class="route-node">
+            <i class="fa-solid fa-location-dot" style="color: var(--success);"></i>
+            <div style="flex: 1;">
+              <div class="node-title">
+                <span>Deliver To Customer</span>
+                ${distToCustomer !== null ? `<span style="color:#34d399;"><i class="fa-solid fa-route"></i> ~${distToCustomer.toFixed(1)} km</span>` : ''}
+              </div>
+              <div class="node-address">${escapeHtml(o.address || 'Address')}</div>
+              
+              ${o.customerLat ? `
+                <div style="font-size: 0.74rem; color: #34d399; font-weight: 800; margin-top: 3px;">
+                  <i class="fa-solid fa-circle-check"></i> Exact GPS Pinpoint Attached (${o.customerLat}, ${o.customerLng})
+                </div>
+              ` : `
+                <div style="font-size: 0.72rem; color: var(--warning); font-weight: 700; margin-top: 3px;">
+                  <i class="fa-solid fa-triangle-exclamation"></i> Manual Text Address (Call customer for landmark)
+                </div>
+              `}
+
+              <div class="action-links-bar">
+                <a href="${customerMapsLink}" target="_blank" class="action-btn-sm map-customer">
+                  <i class="fa-solid fa-diamond-turn-right"></i> Start Doorstep Google Maps
+                </a>
+                ${o.phone ? `<a href="tel:${o.phone}" class="action-btn-sm"><i class="fa-solid fa-phone"></i> Call</a>` : ''}
+                ${cleanCustomerPhone ? `<a href="https://wa.me/${cleanCustomerPhone}" target="_blank" class="action-btn-sm wa"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 0.65rem 0.85rem; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            <strong>Items:</strong> ${itemsList || 'Items list'}
+          </div>
+
+          ${paymentBoxHtml}
+
+          <!-- Live Location Sync / Re-ping Box -->
+          <div class="location-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <label style="font-size: 0.74rem; font-weight: 800; color: var(--text-muted);">
+                <i class="fa-solid fa-satellite-dish"></i> Live GPS Broadcast Link:
+              </label>
+              <button class="btn btn-outline btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--primary); border-color: var(--primary); width:auto;" onclick="useCurrentGPS('${orderId}')">
+                <i class="fa-solid fa-location-crosshairs"></i> Update Link
+              </button>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <input type="url" id="loc-input-${orderId}" class="form-input" style="padding: 0.45rem 0.75rem; font-size: 0.82rem;" placeholder="https://maps.google.com/?q=..." value="${escapeHtml(o.locationLink || '')}">
+              <button class="btn btn-outline" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.8rem;" onclick="saveLocationLink('${orderId}')">
+                Save
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top: 0.5rem;">
+            ${actionButtonHtml}
+          </div>
+
+          <!-- Rider Report Customer Issue Button -->
+          <div style="margin-top: 0.75rem; text-align: right;">
+            <button class="btn btn-outline btn-sm" style="width:auto; padding:4px 10px; font-size:0.74rem; color:var(--danger); border-color:rgba(239,68,68,0.4);" onclick="reportCustomerFakeIssue('${orderId}')">
+              <i class="fa-solid fa-triangle-exclamation"></i> Customer Unreachable / Fake Address?
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPastCard(orderId, o, store) {
+      const isCancelled = o.status === 'CANCELLED';
+      const isUpi = o.paymentMode === 'UPI';
+      const payLabel = isUpi ? `<span style="color:#38bdf8;">UPI PREPAID</span>` : `<span style="color:var(--primary);">COD CASH</span>`;
+      const tripFee = getRiderFeeForOrder(o);
+
+      return `
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; margin-bottom: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <strong style="font-size: 0.9rem;">#${orderId.slice(-6)} • ${escapeHtml(store.name || 'Store')}</strong>
+            ${isCancelled
+              ? `<span class="order-status-pill pill-cancelled">CANCELLED (${escapeHtml(o.cancelledBy || 'USER')})</span>`
+              : `<span class="order-status-pill pill-delivered">+₹${tripFee} FEE EARNED</span>`
+            }
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">
+            ${escapeHtml(o.address || 'Address')}
+            ${isCancelled && o.cancelReason ? `<div style="color:var(--danger); font-size:0.75rem; margin-top:2px;">Reason: ${escapeHtml(o.cancelReason)}</div>` : ''}
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 0.4rem;">
+            <span style="color: var(--text-muted);">${new Date(o.updatedAt || o.createdAt).toLocaleDateString()}</span>
+            <strong>₹${Number(o.totalAmount || 0).toFixed(2)} (${payLabel})</strong>
+          </div>
+        </div>
+      `;
+    }
+
+    function reportCustomerFakeIssue(orderId) {
+      const issue = prompt("Enter reason (e.g. Customer phone switched off, Fake address, Refused delivery):", "Customer unreachable / Phone switched off");
+      if (!issue) return;
+
+      if (!confirm("Cancel this trip and report customer issue to Admin & Store?")) return;
+
+      db.ref('orders/' + orderId).update({
+        status: 'CANCELLED',
+        cancelledBy: 'RIDER_REPORT',
+        cancelReason: sanitizeText(issue),
+        updatedAt: Date.now()
+      }).then(() => {
+        showToast('🚨 Issue reported to Admin & order marked Cancelled.', 'info');
+      });
+    }
+
+    function updateOrderStatus(orderId, newStatus) {
+      const updates = {
+        status: newStatus,
+        updatedAt: Date.now()
+      };
+
+      if (newStatus === 'OUT_FOR_DELIVERY') {
+        updates.riderLat = riderCurrentLat;
+        updates.riderLng = riderCurrentLng;
+        updates.lastLocationUpdate = Date.now();
+      }
+
+      db.ref('orders/' + orderId).update(updates).then(() => {
+        showToast(`Trip updated: ${newStatus}!`, 'info');
+      });
+    }
+
+    function useCurrentGPS(orderId) {
+      if (!navigator.geolocation) {
+        showToast('Geolocation not supported.', 'danger');
+        return;
+      }
+      showToast('Fetching GPS coordinates...', 'info');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
+          document.getElementById('loc-input-' + orderId).value = mapsLink;
+
+          db.ref('orders/' + orderId).update({
+            locationLink: mapsLink,
+            riderLat: lat,
+            riderLng: lng,
+            updatedAt: Date.now()
+          }).then(() => {
+            showToast('📍 Live GPS location shared with customer!', 'success');
+          });
+        },
+        (err) => showToast('GPS Error: ' + err.message, 'danger'),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function saveLocationLink(orderId) {
+      const url = sanitizeText(document.getElementById('loc-input-' + orderId).value.trim());
+      db.ref('orders/' + orderId).update({
+        locationLink: url,
+        updatedAt: Date.now()
+      }).then(() => {
+        showToast('Location link updated!', 'success');
+      });
+    }
+
+    // ==========================================
+    // 6. SECRET 4-DIGIT OTP & BRUTE-FORCE GUARD
+    // ==========================================
+    function openVerifyModal(orderId, billAmount, isPrepaidUpi) {
+      document.getElementById('verify-modal-order-id').value = orderId;
+      document.getElementById('verify-modal-target-amt').value = billAmount;
+      document.getElementById('verify-modal-order-label').textContent = `Order: #${orderId.slice(-6)}`;
+      document.getElementById('verify-otp-input').value = '';
+
+      const codSection = document.getElementById('verify-cod-section');
+      if (isPrepaidUpi) {
+        codSection.style.display = 'none';
+      } else {
+        codSection.style.display = 'block';
+        document.getElementById('verify-modal-bill-amt').textContent = `₹${billAmount.toFixed(2)}`;
+        document.getElementById('cash-tendered').value = '';
+        document.getElementById('cash-change-return').textContent = '₹0.00';
+      }
+
+      document.getElementById('deliveryVerifyModal').classList.add('open');
+      window.history.pushState({ modal: 'verify' }, '');
+    }
+
+    function closeVerifyModal() {
+      document.getElementById('deliveryVerifyModal').classList.remove('open');
+    }
+
+    function calculateChange() {
+      const target = Number(document.getElementById('verify-modal-target-amt').value || 0);
+      const tendered = Number(document.getElementById('cash-tendered').value || 0);
+      const change = tendered - target;
+      const changeEl = document.getElementById('cash-change-return');
+
+      if (change >= 0) {
+        changeEl.textContent = `₹${change.toFixed(2)}`;
+        changeEl.style.color = 'var(--primary)';
+      } else {
+        changeEl.textContent = `Need ₹${Math.abs(change).toFixed(2)} more`;
+        changeEl.style.color = 'var(--danger)';
+      }
+    }
+
+    function confirmPinAndCompleteDelivery() {
+      const orderId = document.getElementById('verify-modal-order-id').value;
+      const enteredPin = document.getElementById('verify-otp-input').value.trim();
+      const order = assignedOrders[orderId];
+
+      if (!order) return;
+
+      if (!pinBruteForceGuard[orderId]) {
+        pinBruteForceGuard[orderId] = { fails: 0, lockedUntil: 0 };
+      }
+      const guard = pinBruteForceGuard[orderId];
+
+      if (Date.now() < guard.lockedUntil) {
+        const waitSec = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
+        showToast(`🔒 Security Lock: Too many wrong PIN attempts! Wait ${waitSec}s.`, 'danger');
+        return;
+      }
+
+      if (order.deliveryOtp && enteredPin !== String(order.deliveryOtp)) {
+        guard.fails += 1;
+        if (guard.fails >= 3) {
+          guard.lockedUntil = Date.now() + 60000;
+          guard.fails = 0;
+          showToast('🚨 3 Wrong Attempts! PIN verification locked for 60 seconds.', 'danger');
+        } else {
+          showToast(`❌ Wrong Delivery PIN! (${3 - guard.fails} attempts remaining)`, 'danger');
+        }
+        document.getElementById('verify-otp-input').focus();
+        return;
+      }
+
+      const tripFee = getRiderFeeForOrder(order);
+
+      db.ref('orders/' + orderId).update({
+        status: 'DELIVERED',
+        updatedAt: Date.now()
+      }).then(() => {
+        closeVerifyModal();
+        showToast(`🎉 PIN Verified! Order Delivered (+₹${tripFee} fee earned)!`, 'success');
+      });
+    }
+
+    // ==========================================
+    // 7. CASH SETTLEMENT, EARNINGS & PAYOUT SYSTEM
+    // ==========================================
+    function calculateEarnings() {
+      let totalCodCollected = 0;
+      let completedTrips = 0;
+      totalRiderDeliveryFees = 0;
+
+      Object.values(assignedOrders).forEach(o => {
+        if (o.status === 'DELIVERED') {
+          completedTrips++;
+          totalRiderDeliveryFees += getRiderFeeForOrder(o);
+          if (o.paymentMode !== 'UPI') {
+            totalCodCollected += Number(o.totalAmount || 0);
+          }
+        }
+      });
+
+      let totalDeposited = 0;
+      Object.values(riderSettlements).forEach(s => {
+        if (s.status === 'APPROVED') {
+          totalDeposited += Number(s.amount || 0);
+        }
+      });
+
+      netCashInHand = Math.max(0, totalCodCollected - totalDeposited);
+
+      // Payout Calculation
+      totalPayoutPaid = 0;
+      Object.values(myRiderPayouts).forEach(p => {
+        if (p.status === 'PAID') {
+          totalPayoutPaid += Number(p.amount || 0);
+        }
+      });
+      availablePayoutBalance = Math.max(0, totalRiderDeliveryFees - totalPayoutPaid);
+
+      document.getElementById('summary-total-trips').textContent = completedTrips;
+      document.getElementById('summary-rider-commission').textContent = '₹' + totalRiderDeliveryFees.toFixed(0);
+      document.getElementById('summary-total-cod').textContent = '₹' + totalCodCollected.toFixed(2);
+      document.getElementById('summary-total-deposited').textContent = '₹' + totalDeposited.toFixed(2);
+      document.getElementById('summary-cash-in-hand').textContent = '₹' + netCashInHand.toFixed(2);
+
+      if (document.getElementById('summary-available-payout')) {
+        document.getElementById('summary-available-payout').textContent = '₹' + availablePayoutBalance.toFixed(2);
+      }
+      if (document.getElementById('summary-total-payout-paid')) {
+        document.getElementById('summary-total-payout-paid').textContent = '₹' + totalPayoutPaid.toFixed(2);
+      }
+
+      const limitBanner = document.getElementById('cash-limit-banner');
+      if (netCashInHand >= MAX_ALLOWED_CASH_LIMIT) {
+        limitBanner.style.display = 'flex';
+      } else {
+        limitBanner.style.display = 'none';
+      }
+    }
+
+    // --- Rider Payout Functions ---
+    function openRiderPayoutModal() {
+      if (availablePayoutBalance < 10) {
+        showToast('Withdrawal ke liye minimum ₹10 balance hona chahiye!', 'info');
+        return;
+      }
+      document.getElementById('modal-available-payout-display').textContent = '₹' + availablePayoutBalance.toFixed(2);
+      document.getElementById('payout-amount-input').value = Math.floor(availablePayoutBalance);
+      document.getElementById('payout-upi-input').value = riderData?.upiId || '';
+      document.getElementById('riderPayoutModal').classList.add('open');
+      window.history.pushState({ modal: 'payout' }, '');
+    }
+
+    function closeRiderPayoutModal() {
+      document.getElementById('riderPayoutModal').classList.remove('open');
+    }
+
+    function submitRiderPayoutRequest() {
+      const amount = Number(document.getElementById('payout-amount-input').value || 0);
+      const upi = document.getElementById('payout-upi-input').value.trim();
+
+      if (amount <= 0 || amount > availablePayoutBalance) {
+        showToast(`Invalid Amount! Maximum ₹${availablePayoutBalance.toFixed(2)} withdraw kar sakte hain.`, 'danger');
+        return;
+      }
+
+      if (!isValidUpiId(upi)) {
+        showToast('Valid UPI ID enter karein (e.g. 9876543210@paytm)!', 'danger');
+        return;
+      }
+
+      const hasPending = Object.values(myRiderPayouts).some(p => p.status === 'PENDING');
+      if (hasPending) {
+        showToast('Aapki ek withdrawal request pehle se Admin ke paas pending hai!', 'danger');
+        return;
+      }
+
+      const payoutData = {
+        riderUid: currentUser.uid,
+        riderName: riderData?.name || 'Rider',
+        riderPhone: riderData?.phone || '',
+        riderUpiId: upi,
+        amount: Number(amount.toFixed(2)),
+        status: 'PENDING',
+        adminRef: '',
+        createdAt: Date.now()
+      };
+
+      db.ref('riderPayouts').push(payoutData).then(() => {
+        closeRiderPayoutModal();
+        showToast(`🎉 ₹${amount.toFixed(2)} ki Payout Request Admin ko bhej di gayi hai!`, 'success');
+      });
+    }
+
+    function renderRiderPayoutHistory() {
+      const container = document.getElementById('payout-history-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const entries = Object.entries(myRiderPayouts).sort((a,b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No earnings withdrawal requests yet.</p>';
+        return;
+      }
+
+      entries.forEach(([id, p]) => {
+        const isPaid = p.status === 'PAID';
+        const isRejected = p.status === 'REJECTED';
+        let badgeClass = 'settlement-pending';
+        let statusText = 'PENDING';
+
+        if (isPaid) {
+          badgeClass = 'settlement-approved';
+          statusText = 'PAID BY ADMIN';
+        } else if (isRejected) {
+          badgeClass = 'settlement-pending';
+          statusText = 'REJECTED';
+        }
+
+        container.innerHTML += `
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.65rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #38bdf8; font-size: 0.95rem;">₹${Number(p.amount || 0).toFixed(2)}</strong>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                UPI: ${escapeHtml(p.riderUpiId)} ${p.adminRef ? `• Ref: ${escapeHtml(p.adminRef)}` : ''}
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.68rem;">${new Date(p.createdAt).toLocaleString()}</small>
+            </div>
+            <span class="settlement-badge ${badgeClass}">${statusText}</span>
+          </div>
+        `;
+      });
+    }
+
+    // --- COD Cash Deposit Modal Functions ---
+    function openDepositModal() {
+      if (netCashInHand <= 0) {
+        showToast('Aapke paas deposit karne ke liye koi cash balance nahi hai!', 'info');
+        return;
+      }
+
+      document.getElementById('modal-deposit-amount-display').textContent = `₹${netCashInHand.toFixed(2)}`;
+
+      const upiString = `upi://pay?pa=${encodeURIComponent(adminUpiId)}&pn=GossaigaonBazarAdmin&am=${netCashInHand.toFixed(2)}&cu=INR`;
+      document.getElementById('deposit-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiString)}`;
+      document.getElementById('deposit-utr').value = '';
+
+      selectDepositMode('UPI');
+      document.getElementById('depositModal').classList.add('open');
+      window.history.pushState({ modal: 'deposit' }, '');
+    }
+
+    function closeDepositModal() {
+      document.getElementById('depositModal').classList.remove('open');
+    }
+
+    function selectDepositMode(mode) {
+      currentDepositMode = mode;
+      const btnUpi = document.getElementById('btn-dep-mode-upi');
+      const btnCash = document.getElementById('btn-dep-mode-cash');
+      const upiBox = document.getElementById('deposit-upi-box');
+      const cashBox = document.getElementById('deposit-cash-box');
+
+      if (mode === 'UPI') {
+        btnUpi.className = 'btn btn-primary btn-sm';
+        btnCash.className = 'btn btn-outline btn-sm';
+        upiBox.style.display = 'block';
+        cashBox.style.display = 'none';
+      } else {
+        btnCash.className = 'btn btn-primary btn-sm';
+        btnUpi.className = 'btn btn-outline btn-sm';
+        cashBox.style.display = 'block';
+        upiBox.style.display = 'none';
+      }
+    }
+
+    function submitCashSettlement() {
+      const utr = document.getElementById('deposit-utr').value.trim();
+
+      const hasPending = Object.values(riderSettlements).some(s => s.status === 'PENDING');
+      if (hasPending) {
+        showToast('Aapki ek settlement request pehle se Admin ke paas pending hai!', 'danger');
+        return;
+      }
+
+      if (currentDepositMode === 'UPI') {
+        const utrCheck = validateSettlementUtr(utr);
+        if (!utrCheck.valid) {
+          showToast(utrCheck.reason, 'danger');
+          return;
+        }
+      }
+
+      const settlementData = {
+        riderUid: currentUser.uid,
+        riderName: riderData?.name || 'Rider',
+        riderPhone: riderData?.phone || 'No Phone',
+        amount: Number(netCashInHand.toFixed(2)),
+        mode: currentDepositMode,
+        utr: currentDepositMode === 'UPI' ? utr : 'PHYSICAL_HANDOVER',
+        status: 'PENDING',
+        createdAt: Date.now()
+      };
+
+      db.ref('settlements').push(settlementData).then(() => {
+        closeDepositModal();
+        showToast('🎉 Handover request submitted! Admin verify karke balance clear karega.', 'success');
+      });
+    }
+
+    function renderSettlementHistory() {
+      const container = document.getElementById('settlement-history-container');
+      container.innerHTML = '';
+
+      const entries = Object.entries(riderSettlements).sort((a,b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No handover requests yet.</p>';
+        return;
+      }
+
+      entries.forEach(([id, s]) => {
+        const isApproved = s.status === 'APPROVED';
+        const badgeClass = isApproved ? 'settlement-approved' : 'settlement-pending';
+        const statusText = isApproved ? 'APPROVED & SETTLED' : 'PENDING VERIFY';
+
+        container.innerHTML += `
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #fff; font-size: 0.95rem;">₹${Number(s.amount || 0).toFixed(2)}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                Mode: ${escapeHtml(s.mode)} ${s.utr ? `• UTR: ${escapeHtml(s.utr)}` : ''}
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">${new Date(s.createdAt).toLocaleString()}</small>
+            </div>
+            <span class="settlement-badge ${badgeClass}">${statusText}</span>
+          </div>
+        `;
+      });
+    }
+
+    // ==========================================
+    // 8. NAVIGATION & NATIVE BACK BUTTON CONTROLLER
+    // ==========================================
+    let currentRiderTab = 'active';
+    let riderLastBackTime = 0;
+
+    window.history.replaceState({ screen: 'active' }, '');
+
+    function switchNav(tabName, pushHistory = true) {
+      if (currentRiderTab === tabName && pushHistory) return;
+
+      document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+      const target = document.getElementById('tab-' + tabName);
+      if (target) target.classList.add('active');
+
+      const buttons = document.querySelectorAll('.nav-btn');
+      if (tabName === 'active') buttons[0]?.classList.add('active');
+      if (tabName === 'earnings') buttons[1]?.classList.add('active');
+      if (tabName === 'profile') buttons[2]?.classList.add('active');
+
+      currentRiderTab = tabName;
+
+      if (pushHistory) {
+        window.history.pushState({ screen: tabName }, '');
+      }
+    }
+
+    // Hardware Back Button Interceptor
+    window.addEventListener('popstate', () => {
+      const verifyModal = document.getElementById('deliveryVerifyModal');
+      const depositModal = document.getElementById('depositModal');
+      const payoutModal = document.getElementById('riderPayoutModal');
+
+      // 1. Close open modals first
+      if (payoutModal && payoutModal.classList.contains('open')) {
+        payoutModal.classList.remove('open');
+        return;
+      }
+      if (verifyModal && verifyModal.classList.contains('open')) {
+        verifyModal.classList.remove('open');
+        return;
+      }
+      if (depositModal && depositModal.classList.contains('open')) {
+        depositModal.classList.remove('open');
+        return;
+      }
+
+      // 2. If in Earnings or Profile tab, go back to Active Trips
+      if (currentRiderTab !== 'active') {
+        switchNav('active', false);
+        return;
+      }
+
+      // 3. Double Tap to Exit
+      const now = Date.now();
+      if (now - riderLastBackTime < 2000) {
+        window.history.back(); // Allow exiting app
+      } else {
+        riderLastBackTime = now;
+        showToast('Press BACK again to exit Rider app', 'info');
+        window.history.pushState({ screen: 'active' }, '');
+      }
+    });
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
