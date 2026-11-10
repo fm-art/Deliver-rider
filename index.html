@@ -436,7 +436,7 @@
     .action-btn-sm.map-customer { background: linear-gradient(135deg, #16a34a, #15803d); color: #ffffff; border-color: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
     .action-btn-sm.wa { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16,185,129,0.4); }
 
-    /* Payment Boxes (COD vs UPI) */
+    /* Payment Boxes */
     .payment-box {
       border-radius: 14px;
       padding: 0.9rem 1rem;
@@ -467,7 +467,6 @@
       color: var(--primary);
     }
 
-    /* Location Sharer Box */
     .location-box {
       background: var(--bg);
       border-radius: 14px;
@@ -476,7 +475,7 @@
       border: 1px solid var(--border);
     }
 
-    /* OTP Input Box inside Modal */
+    /* OTP Input Box */
     .otp-verify-input {
       font-family: monospace;
       font-size: 1.6rem;
@@ -548,7 +547,7 @@
     .settlement-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
     .settlement-approved { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
 
-    /* Modal Backdrop */
+    /* Modals */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -632,7 +631,6 @@
         <div class="auth-tab" id="tab-signup-btn" onclick="toggleAuthTab('signup')">Register Rider</div>
       </div>
 
-      <!-- Sign In Form -->
       <form id="login-form">
         <div class="form-group">
           <label>Registered Email</label>
@@ -647,7 +645,6 @@
         </button>
       </form>
 
-      <!-- Sign Up Form -->
       <form id="signup-form" style="display: none;">
         <div class="form-group">
           <label>Rider Full Name</label>
@@ -679,7 +676,7 @@
 
     <!-- MAIN APP VIEW -->
     <div class="security-ribbon">
-      <i class="fa-solid fa-satellite"></i> Live GPS Radar & Doorstep Route Guidance Active
+      <i class="fa-solid fa-satellite"></i> Live GPS Radar & Proximity Dispatch Active
     </div>
 
     <!-- Top Rider Header -->
@@ -884,7 +881,7 @@
     </div>
   </div>
 
-  <!-- DELIVERY VERIFICATION MODAL (4-DIGIT OTP + BRUTE FORCE GUARD) -->
+  <!-- DELIVERY VERIFICATION MODAL -->
   <div class="modal-backdrop" id="deliveryVerifyModal">
     <div class="modal-box">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -1003,6 +1000,8 @@
     let currentUser = null;
     let riderData = null;
     let assignedOrders = {};
+    let allSystemOrders = {};
+    let allDeliveryPartners = {};
     let stores = {};
     let allSettlements = {};
     let riderSettlements = {};
@@ -1020,7 +1019,6 @@
     let baseRiderFeePerTrip = 25;
     const MAX_ALLOWED_CASH_LIMIT = 3000;
 
-    // Real-time current rider GPS coordinates
     let riderCurrentLat = 26.4524;
     let riderCurrentLng = 89.9723;
 
@@ -1189,6 +1187,11 @@
         }
       });
 
+      // Listen to all delivery partners to calculate proximity for re-assigning
+      db.ref('deliveryPartners').on('value', snap => {
+        allDeliveryPartners = snap.val() || {};
+      });
+
       db.ref('restaurants').on('value', snap => {
         stores = snap.val() || {};
         renderOrdersFeed();
@@ -1208,12 +1211,12 @@
         renderOrdersFeed();
       });
 
-      // ORIGINAL WORKING ORDERS LISTENER (UNTOUCHED)
+      // ORDERS LISTENER: Filters my assigned orders & keeps all orders cache for busy check
       db.ref('orders').on('value', snap => {
-        const allOrders = snap.val() || {};
+        allSystemOrders = snap.val() || {};
         const myOrders = {};
 
-        Object.entries(allOrders).forEach(([id, o]) => {
+        Object.entries(allSystemOrders).forEach(([id, o]) => {
           if (o.deliveryUid === currentUser.uid) {
             myOrders[id] = o;
           }
@@ -1376,7 +1379,113 @@
     });
 
     // ==========================================
-    // 5. ACTIVE ORDERS FEED & ORIGINAL ROUTING (UNTOUCHED)
+    // 5. SMART PROXIMITY & 1-ORDER-PER-RIDER ALGORITHM
+    // ==========================================
+    // Finds the closest online, approved, NON-BUSY rider to the store who has not rejected this order
+    function findNextNearestFreeRider(storeLat, storeLng, rejectedRidersMap = {}, currentOrderId = null) {
+      // 1. Identify all riders who currently have active orders (Rule: 1 order per rider)
+      const busyRiderUids = new Set();
+      Object.entries(allSystemOrders).forEach(([id, ord]) => {
+        if (id !== currentOrderId && ord.deliveryUid) {
+          const st = String(ord.status || '').toUpperCase().trim();
+          if (st !== 'DELIVERED' && st !== 'CANCELLED') {
+            busyRiderUids.add(ord.deliveryUid);
+          }
+        }
+      });
+
+      // 2. Filter available riders
+      const eligibleRiders = Object.entries(allDeliveryPartners).filter(([uid, partner]) => {
+        if (partner.approved !== true || partner.online !== true) return false;
+        if (busyRiderUids.has(uid)) return false; // Exclude busy riders!
+        if (rejectedRidersMap && rejectedRidersMap[uid] === true) return false; // Exclude riders who rejected this trip!
+        return true;
+      });
+
+      if (eligibleRiders.length === 0) return null;
+
+      // 3. Proximity Sort: Find rider closest to store coordinates
+      let bestRiderUid = null;
+      let minDistance = Infinity;
+
+      eligibleRiders.forEach(([uid, partner]) => {
+        if (partner.lat && partner.lng && storeLat && storeLng) {
+          const dist = calculateDistanceKm(storeLat, storeLng, partner.lat, partner.lng);
+          if (dist !== null && dist < minDistance) {
+            minDistance = dist;
+            bestRiderUid = uid;
+          }
+        } else if (!bestRiderUid) {
+          bestRiderUid = uid;
+        }
+      });
+
+      return bestRiderUid || eligibleRiders[0][0];
+    }
+
+    // RIDER CANCELS / PASSES TRIP TO NEXT NEAREST RIDER
+    function passTripToNextRider(orderId) {
+      const order = assignedOrders[orderId];
+      if (!order) return;
+
+      const reason = prompt("Trip ko agle rider ko pass karne ka kaaran (e.g. Bike issue, Out of fuel, Busy):", "Busy / Cannot deliver right now");
+      if (!reason) return;
+
+      if (!confirm("Confirm: Kya aap yeh order chhodkar agle nazdeeki rider ko pass karna chahte hain?")) return;
+
+      const store = stores[order.restaurantId] || {};
+      const storeLat = store.lat || 26.4524;
+      const storeLng = store.lng || 89.9723;
+
+      // Build rejected riders list
+      const rejectedRiders = order.rejectedRiders || {};
+      rejectedRiders[currentUser.uid] = true;
+
+      // Find next nearest free rider
+      const nextRiderUid = findNextNearestFreeRider(storeLat, storeLng, rejectedRiders, orderId);
+
+      const updates = {
+        rejectedRiders: rejectedRiders,
+        updatedAt: Date.now()
+      };
+
+      if (nextRiderUid) {
+        const nextPartner = allDeliveryPartners[nextRiderUid] || {};
+        updates.deliveryUid = nextRiderUid;
+        updates.riderName = nextPartner.name || 'Rider';
+        updates.riderPhone = nextPartner.phone || '';
+        updates.riderPassLog = {
+          passedByUid: currentUser.uid,
+          passedByName: riderData?.name || 'Rider',
+          reason: sanitizeText(reason),
+          passedAt: Date.now(),
+          reassignedTo: nextRiderUid
+        };
+
+        db.ref('orders/' + orderId).update(updates).then(() => {
+          showToast(`⚡ Order pass ho gaya aur agle nazdeeki rider (${nextPartner.name || 'Rider'}) ko assign ho gaya!`, 'info');
+        });
+      } else {
+        // No free online rider right now -> unassign and keep order ready for pickup in Admin queue
+        updates.deliveryUid = null;
+        updates.riderName = null;
+        updates.riderPhone = null;
+        updates.riderPassLog = {
+          passedByUid: currentUser.uid,
+          passedByName: riderData?.name || 'Rider',
+          reason: sanitizeText(reason),
+          passedAt: Date.now(),
+          reassignedTo: null
+        };
+
+        db.ref('orders/' + orderId).update(updates).then(() => {
+          showToast('⚠️ Abhi koi dusra free rider online nahi hai. Order Admin & Store queue me wapas chala gaya hai.', 'warning');
+        });
+      }
+    }
+
+    // ==========================================
+    // 6. ACTIVE ORDERS FEED & ROUTING
     // ==========================================
     function renderOrdersFeed() {
       const activeContainer = document.getElementById('active-orders-container');
@@ -1420,7 +1529,8 @@
     }
 
     function renderActiveCard(orderId, o, store) {
-      const itemsList = (o.items || []).map(i => `${i.qty}× ${escapeHtml(i.name)}`).join(', ');
+      const rawItems = Array.isArray(o.items) ? o.items : Object.values(o.items || {});
+      const itemsList = rawItems.map(i => `${i.qty || 1}× ${escapeHtml(i.name || 'Item')}`).join(', ');
       const tripFee = getRiderFeeForOrder(o);
       const subAmt = Number(o.subtotalAmount || o.totalAmount || 0);
       const delCharge = Number(o.deliveryCharge || 0);
@@ -1518,19 +1628,16 @@
         `;
       }
 
-      // 1. EXACT STORE GPS NAVIGATION LINK
       const storeMapsLink = (store.lat && store.lng)
         ? `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`
         : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((store.name || '') + ' ' + (store.address || 'Gossaigaon'))}`;
 
-      // 2. EXACT CUSTOMER DOORSTEP GPS NAVIGATION LINK
       const customerMapsLink = (o.customerLat && o.customerLng)
         ? `https://www.google.com/maps/dir/?api=1&destination=${o.customerLat},${o.customerLng}`
         : (o.locationLink ? o.locationLink : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address || 'Gossaigaon')}`);
 
       const cleanCustomerPhone = (o.phone || '').replace(/[^0-9]/g, '');
 
-      // Realtime Distance Calculations
       const distToStore = (riderCurrentLat && store.lat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, store.lat, store.lng) : null;
       const distToCustomer = (riderCurrentLat && o.customerLat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, o.customerLat, o.customerLng) : null;
 
@@ -1621,10 +1728,16 @@
             ${actionButtonHtml}
           </div>
 
-          <!-- Rider Report Customer Issue Button -->
-          <div style="margin-top: 0.75rem; text-align: right;">
+          <!-- ACTION BUTTONS: PASS TRIP TO NEXT RIDER & REPORT FAKE -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 0.85rem; flex-wrap: wrap;">
+            <!-- PASS TRIP TO NEXT RIDER BUTTON -->
+            <button class="btn btn-outline btn-sm" style="color:var(--warning); border-color:rgba(245, 158, 11, 0.5); width:auto;" onclick="passTripToNextRider('${orderId}')" title="Pass trip to next available rider">
+              <i class="fa-solid fa-person-walking-arrow-right"></i> Pass / Reject Trip
+            </button>
+
+            <!-- REPORT ISSUE BUTTON -->
             <button class="btn btn-outline btn-sm" style="width:auto; padding:4px 10px; font-size:0.74rem; color:var(--danger); border-color:rgba(239,68,68,0.4);" onclick="reportCustomerFakeIssue('${orderId}')">
-              <i class="fa-solid fa-triangle-exclamation"></i> Customer Unreachable / Fake Address?
+              <i class="fa-solid fa-triangle-exclamation"></i> Customer Unreachable?
             </button>
           </div>
         </div>
@@ -1729,7 +1842,7 @@
     }
 
     // ==========================================
-    // 6. SECRET 4-DIGIT OTP & BRUTE-FORCE GUARD
+    // 7. SECRET 4-DIGIT OTP & BRUTE-FORCE GUARD
     // ==========================================
     function openVerifyModal(orderId, billAmount, isPrepaidUpi) {
       document.getElementById('verify-modal-order-id').value = orderId;
@@ -1813,7 +1926,7 @@
     }
 
     // ==========================================
-    // 7. CASH SETTLEMENT, EARNINGS & PAYOUT SYSTEM
+    // 8. FINANCIALS, EARNINGS & PAYOUT SYSTEM
     // ==========================================
     function calculateEarnings() {
       let totalCodCollected = 0;
@@ -1869,7 +1982,6 @@
       }
     }
 
-    // --- Rider Payout Functions ---
     function openRiderPayoutModal() {
       if (availablePayoutBalance < 10) {
         showToast('Withdrawal ke liye minimum ₹10 balance hona chahiye!', 'info');
@@ -1964,7 +2076,6 @@
       });
     }
 
-    // --- COD Cash Deposit Modal Functions ---
     function openDepositModal() {
       if (netCashInHand <= 0) {
         showToast('Aapke paas deposit karne ke liye koi cash balance nahi hai!', 'info');
@@ -2072,7 +2183,7 @@
     }
 
     // ==========================================
-    // 8. NAVIGATION & NATIVE BACK BUTTON CONTROLLER
+    // 9. NAVIGATION & BACK BUTTON CONTROLLER
     // ==========================================
     let currentRiderTab = 'active';
     let riderLastBackTime = 0;
@@ -2100,36 +2211,23 @@
       }
     }
 
-    // Hardware Back Button Interceptor
     window.addEventListener('popstate', () => {
       const verifyModal = document.getElementById('deliveryVerifyModal');
       const depositModal = document.getElementById('depositModal');
       const payoutModal = document.getElementById('riderPayoutModal');
 
-      // 1. Close open modals first
-      if (payoutModal && payoutModal.classList.contains('open')) {
-        payoutModal.classList.remove('open');
-        return;
-      }
-      if (verifyModal && verifyModal.classList.contains('open')) {
-        verifyModal.classList.remove('open');
-        return;
-      }
-      if (depositModal && depositModal.classList.contains('open')) {
-        depositModal.classList.remove('open');
-        return;
-      }
+      if (payoutModal && payoutModal.classList.contains('open')) { payoutModal.classList.remove('open'); return; }
+      if (verifyModal && verifyModal.classList.contains('open')) { verifyModal.classList.remove('open'); return; }
+      if (depositModal && depositModal.classList.contains('open')) { depositModal.classList.remove('open'); return; }
 
-      // 2. If in Earnings or Profile tab, go back to Active Trips
       if (currentRiderTab !== 'active') {
         switchNav('active', false);
         return;
       }
 
-      // 3. Double Tap to Exit
       const now = Date.now();
       if (now - riderLastBackTime < 2000) {
-        window.history.back(); // Allow exiting app
+        window.history.back();
       } else {
         riderLastBackTime = now;
         showToast('Press BACK again to exit Rider app', 'info');
