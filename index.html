@@ -676,7 +676,7 @@
 
     <!-- MAIN APP VIEW -->
     <div class="security-ribbon">
-      <i class="fa-solid fa-satellite"></i> Live GPS Radar & Proximity Dispatch Active
+      <i class="fa-solid fa-shield-halved"></i> Anti-Theft Pickup Lock & Dispatch Proximity Active
     </div>
 
     <!-- Top Rider Header -->
@@ -1187,7 +1187,6 @@
         }
       });
 
-      // Listen to all delivery partners to calculate proximity for re-assigning
       db.ref('deliveryPartners').on('value', snap => {
         allDeliveryPartners = snap.val() || {};
       });
@@ -1211,7 +1210,7 @@
         renderOrdersFeed();
       });
 
-      // ORDERS LISTENER: Filters my assigned orders & keeps all orders cache for busy check
+      // ORIGINAL WORKING ORDERS LISTENER
       db.ref('orders').on('value', snap => {
         allSystemOrders = snap.val() || {};
         const myOrders = {};
@@ -1254,7 +1253,6 @@
         renderOrdersFeed();
       });
 
-      // Rider Payout Withdrawal History Listener
       db.ref('riderPayouts').on('value', snap => {
         allRiderPayouts = snap.val() || {};
         myRiderPayouts = {};
@@ -1280,7 +1278,6 @@
 
           document.getElementById('gps-coordinates-text').textContent = `${riderCurrentLat}° N, ${riderCurrentLng}° E (±${accuracy}m)`;
 
-          // 1. Broadcast to Rider Profile in Firebase
           db.ref('deliveryPartners/' + currentUser.uid).update({
             lat: riderCurrentLat,
             lng: riderCurrentLng,
@@ -1288,7 +1285,6 @@
             lastSeen: Date.now()
           });
 
-          // 2. Broadcast directly into active customer order so customer tracks rider movement
           Object.entries(assignedOrders).forEach(([orderId, o]) => {
             if (o.status === 'OUT_FOR_DELIVERY') {
               db.ref(`orders/${orderId}`).update({
@@ -1379,11 +1375,10 @@
     });
 
     // ==========================================
-    // 5. SMART PROXIMITY & 1-ORDER-PER-RIDER ALGORITHM
+    // 5. SMART PROXIMITY & BUSY-RIDER DISPATCH
     // ==========================================
-    // Finds the closest online, approved, NON-BUSY rider to the store who has not rejected this order
     function findNextNearestFreeRider(storeLat, storeLng, rejectedRidersMap = {}, currentOrderId = null) {
-      // 1. Identify all riders who currently have active orders (Rule: 1 order per rider)
+      // 1. Check who currently has active trips (Busy riders lock)
       const busyRiderUids = new Set();
       Object.entries(allSystemOrders).forEach(([id, ord]) => {
         if (id !== currentOrderId && ord.deliveryUid) {
@@ -1394,17 +1389,17 @@
         }
       });
 
-      // 2. Filter available riders
+      // 2. Filter available free riders
       const eligibleRiders = Object.entries(allDeliveryPartners).filter(([uid, partner]) => {
         if (partner.approved !== true || partner.online !== true) return false;
-        if (busyRiderUids.has(uid)) return false; // Exclude busy riders!
-        if (rejectedRidersMap && rejectedRidersMap[uid] === true) return false; // Exclude riders who rejected this trip!
+        if (busyRiderUids.has(uid)) return false; // 1 Order per Rider Rule!
+        if (rejectedRidersMap && rejectedRidersMap[uid] === true) return false; // Don't assign to who rejected
         return true;
       });
 
       if (eligibleRiders.length === 0) return null;
 
-      // 3. Proximity Sort: Find rider closest to store coordinates
+      // 3. Proximity: Pick closest to store
       let bestRiderUid = null;
       let minDistance = Infinity;
 
@@ -1423,12 +1418,19 @@
       return bestRiderUid || eligibleRiders[0][0];
     }
 
-    // RIDER CANCELS / PASSES TRIP TO NEXT NEAREST RIDER
+    // RIDER PASSES / REJECTS TRIP (BEFORE PICKUP ONLY)
     function passTripToNextRider(orderId) {
       const order = assignedOrders[orderId];
       if (!order) return;
 
-      const reason = prompt("Trip ko agle rider ko pass karne ka kaaran (e.g. Bike issue, Out of fuel, Busy):", "Busy / Cannot deliver right now");
+      const st = String(order.status || '').toUpperCase().trim();
+      // ANTI-THEFT LOCK: Cannot cancel after pickup!
+      if (st === 'PICKED_UP' || st === 'OUT_FOR_DELIVERY') {
+        showToast('🛑 Order dukan se pickup ho chuka hai! Ab trip cancel ya pass nahi kiya ja sakta.', 'danger');
+        return;
+      }
+
+      const reason = prompt("Trip pass karne ka kaaran (e.g. Bike issue, Out of fuel, Busy):", "Busy / Cannot deliver right now");
       if (!reason) return;
 
       if (!confirm("Confirm: Kya aap yeh order chhodkar agle nazdeeki rider ko pass karna chahte hain?")) return;
@@ -1437,11 +1439,9 @@
       const storeLat = store.lat || 26.4524;
       const storeLng = store.lng || 89.9723;
 
-      // Build rejected riders list
       const rejectedRiders = order.rejectedRiders || {};
       rejectedRiders[currentUser.uid] = true;
 
-      // Find next nearest free rider
       const nextRiderUid = findNextNearestFreeRider(storeLat, storeLng, rejectedRiders, orderId);
 
       const updates = {
@@ -1466,7 +1466,6 @@
           showToast(`⚡ Order pass ho gaya aur agle nazdeeki rider (${nextPartner.name || 'Rider'}) ko assign ho gaya!`, 'info');
         });
       } else {
-        // No free online rider right now -> unassign and keep order ready for pickup in Admin queue
         updates.deliveryUid = null;
         updates.riderName = null;
         updates.riderPhone = null;
@@ -1534,10 +1533,14 @@
       const tripFee = getRiderFeeForOrder(o);
       const subAmt = Number(o.subtotalAmount || o.totalAmount || 0);
       const delCharge = Number(o.deliveryCharge || 0);
+      const statusUpper = String(o.status || 'PLACED').toUpperCase().trim();
 
-      let statusPill = `<span class="order-status-pill pill-ready">${o.status}</span>`;
-      if (o.status === 'PICKED_UP') statusPill = `<span class="order-status-pill pill-picked">PICKED UP</span>`;
-      if (o.status === 'OUT_FOR_DELIVERY') statusPill = `<span class="order-status-pill pill-out">OUT FOR DELIVERY</span>`;
+      // Check if order has already been picked up
+      const isPickedUp = statusUpper === 'PICKED_UP' || statusUpper === 'OUT_FOR_DELIVERY';
+
+      let statusPill = `<span class="order-status-pill pill-ready">${statusUpper}</span>`;
+      if (statusUpper === 'PICKED_UP') statusPill = `<span class="order-status-pill pill-picked">PICKED UP</span>`;
+      if (statusUpper === 'OUT_FOR_DELIVERY') statusPill = `<span class="order-status-pill pill-out">OUT FOR DELIVERY</span>`;
 
       const isUpi = o.paymentMode === 'UPI';
       const isUpiPaid = isUpi && o.paymentStatus === 'VERIFIED';
@@ -1547,21 +1550,21 @@
       let actionButtonHtml = '';
       if (riderData?.approved !== true) {
         actionButtonHtml = `<button class="btn btn-outline" disabled style="opacity:0.5;">Account Approval Pending from Admin</button>`;
-      } else if (isCashCapLocked && o.status === 'PLACED') {
+      } else if (isCashCapLocked && statusUpper === 'PLACED') {
         actionButtonHtml = `<button class="btn btn-danger btn-action-lg" onclick="switchNav('earnings'); openDepositModal();">🚨 Cash Limit ₹3,000 Exceeded - Deposit First</button>`;
-      } else if (o.status === 'READY_FOR_PICKUP' || o.status === 'ACCEPTED' || o.status === 'PREPARING' || o.status === 'PACKING' || o.status === 'PLACED') {
+      } else if (['READY_FOR_PICKUP', 'ACCEPTED', 'PREPARING', 'PACKING', 'PLACED'].includes(statusUpper)) {
         actionButtonHtml = `
           <button class="btn btn-primary btn-action-lg" onclick="updateOrderStatus('${orderId}', 'PICKED_UP')">
             <i class="fa-solid fa-box"></i> Confirm Grocery Picked Up
           </button>
         `;
-      } else if (o.status === 'PICKED_UP') {
+      } else if (statusUpper === 'PICKED_UP') {
         actionButtonHtml = `
           <button class="btn btn-info btn-action-lg" onclick="updateOrderStatus('${orderId}', 'OUT_FOR_DELIVERY')">
             <i class="fa-solid fa-motorcycle"></i> Start Doorstep Delivery Route
           </button>
         `;
-      } else if (o.status === 'OUT_FOR_DELIVERY') {
+      } else if (statusUpper === 'OUT_FOR_DELIVERY') {
         if (isUpiPending) {
           actionButtonHtml = `
             <button class="btn btn-outline btn-action-lg" style="border-color:var(--warning); color:var(--warning);" onclick="showToast('⚠️ Hold Delivery! Customer UPI is not verified by Admin yet.', 'danger')">
@@ -1728,12 +1731,18 @@
             ${actionButtonHtml}
           </div>
 
-          <!-- ACTION BUTTONS: PASS TRIP TO NEXT RIDER & REPORT FAKE -->
+          <!-- ACTION BUTTONS: PASS TRIP (LOCKED AFTER PICKUP) & REPORT ISSUE -->
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 0.85rem; flex-wrap: wrap;">
-            <!-- PASS TRIP TO NEXT RIDER BUTTON -->
-            <button class="btn btn-outline btn-sm" style="color:var(--warning); border-color:rgba(245, 158, 11, 0.5); width:auto;" onclick="passTripToNextRider('${orderId}')" title="Pass trip to next available rider">
-              <i class="fa-solid fa-person-walking-arrow-right"></i> Pass / Reject Trip
-            </button>
+            <!-- PASS TRIP BUTTON: Only visible BEFORE pickup! Once picked up, it is locked. -->
+            ${!isPickedUp ? `
+              <button class="btn btn-outline btn-sm" style="color:var(--warning); border-color:rgba(245, 158, 11, 0.5); width:auto;" onclick="passTripToNextRider('${orderId}')" title="Pass trip to next available rider">
+                <i class="fa-solid fa-person-walking-arrow-right"></i> Pass / Reject Trip
+              </button>
+            ` : `
+              <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:8px;">
+                <i class="fa-solid fa-lock" style="color:var(--primary);"></i> Items Picked Up (Trip Locked)
+              </span>
+            `}
 
             <!-- REPORT ISSUE BUTTON -->
             <button class="btn btn-outline btn-sm" style="width:auto; padding:4px 10px; font-size:0.74rem; color:var(--danger); border-color:rgba(239,68,68,0.4);" onclick="reportCustomerFakeIssue('${orderId}')">
@@ -1771,7 +1780,29 @@
       `;
     }
 
+    // ANTI-THEFT GUARD: If items are already picked up, rider CANNOT cancel the order themselves!
     function reportCustomerFakeIssue(orderId) {
+      const order = assignedOrders[orderId];
+      if (!order) return;
+
+      const st = String(order.status || '').toUpperCase().trim();
+      const isPickedUp = st === 'PICKED_UP' || st === 'OUT_FOR_DELIVERY';
+
+      if (isPickedUp) {
+        const issue = prompt("Customer unreachable / delivery issue details likhein (Admin ko alert jayega):", "Customer phone switched off / Door locked");
+        if (!issue) return;
+
+        db.ref('orders/' + orderId).update({
+          customerIssueReported: true,
+          issueDetails: sanitizeText(issue),
+          updatedAt: Date.now()
+        }).then(() => {
+          showToast('⚠️ Alert Admin ko bhej diya gaya hai! Samaan aapke bag me hai, bina Admin approval ke order cancel nahi ho sakta.', 'warning');
+        });
+        return;
+      }
+
+      // If NOT yet picked up, allow cancellation
       const issue = prompt("Enter reason (e.g. Customer phone switched off, Fake address, Refused delivery):", "Customer unreachable / Phone switched off");
       if (!issue) return;
 
@@ -1952,7 +1983,6 @@
 
       netCashInHand = Math.max(0, totalCodCollected - totalDeposited);
 
-      // Payout Calculation
       totalPayoutPaid = 0;
       Object.values(myRiderPayouts).forEach(p => {
         if (p.status === 'PAID') {
