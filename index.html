@@ -436,7 +436,7 @@
     .action-btn-sm.map-customer { background: linear-gradient(135deg, #16a34a, #15803d); color: #ffffff; border-color: var(--primary); box-shadow: 0 4px 12px var(--primary-glow); }
     .action-btn-sm.wa { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16,185,129,0.4); }
 
-    /* Payment Boxes */
+    /* Payment Boxes (COD vs UPI) */
     .payment-box {
       border-radius: 14px;
       padding: 0.9rem 1rem;
@@ -467,6 +467,7 @@
       color: var(--primary);
     }
 
+    /* Location Sharer Box */
     .location-box {
       background: var(--bg);
       border-radius: 14px;
@@ -475,7 +476,7 @@
       border: 1px solid var(--border);
     }
 
-    /* OTP Input Box */
+    /* OTP Input Box inside Modal */
     .otp-verify-input {
       font-family: monospace;
       font-size: 1.6rem;
@@ -491,12 +492,12 @@
       outline: none;
     }
 
-    /* Cash Bag & Settlement Cards */
+    /* Cash Bag & Payout Cards */
     .cash-hero-card {
       background: linear-gradient(135deg, #172238, #0f172a);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 1.4rem;
+      padding: 1.35rem;
       margin-bottom: 1.15rem;
       box-shadow: 0 10px 25px rgba(0,0,0,0.4);
     }
@@ -510,33 +511,6 @@
       box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
     }
 
-    .earnings-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 1.25rem;
-    }
-
-    .earnings-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 1.15rem 1rem;
-      text-align: center;
-    }
-
-    .earnings-card h4 {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-bottom: 0.4rem;
-    }
-
-    .earnings-val {
-      font-size: 1.55rem;
-      font-weight: 800;
-    }
-
     .settlement-badge {
       font-size: 0.7rem;
       padding: 3px 8px;
@@ -546,13 +520,14 @@
     }
     .settlement-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
     .settlement-approved { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+    .settlement-rejected { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
 
-    /* Modals */
+    /* Modal Backdrop */
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.82);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.84);
+      backdrop-filter: blur(5px);
       display: none;
       align-items: center;
       justify-content: center;
@@ -623,7 +598,7 @@
       <div class="brand-hero">
         <i class="fa-solid fa-person-biking"></i>
         <h1>Gossaigaon Fleet</h1>
-        <p>🛡️ Turn-By-Turn GPS Delivery Partner Terminal</p>
+        <p>🛡️ Turn-By-Turn GPS & Payout Enabled Terminal</p>
       </div>
 
       <div class="auth-tabs">
@@ -631,6 +606,7 @@
         <div class="auth-tab" id="tab-signup-btn" onclick="toggleAuthTab('signup')">Register Rider</div>
       </div>
 
+      <!-- Sign In Form -->
       <form id="login-form">
         <div class="form-group">
           <label>Registered Email</label>
@@ -645,6 +621,7 @@
         </button>
       </form>
 
+      <!-- Sign Up Form -->
       <form id="signup-form" style="display: none;">
         <div class="form-group">
           <label>Rider Full Name</label>
@@ -657,6 +634,10 @@
         <div class="form-group">
           <label>10-Digit Mobile Number</label>
           <input type="tel" id="signup-phone" class="form-input" placeholder="9876543210" maxlength="10" required>
+        </div>
+        <div class="form-group">
+          <label>Your UPI ID for Earnings Payout</label>
+          <input type="text" id="signup-upi" class="form-input" placeholder="e.g. 9876543210@paytm" required>
         </div>
         <div class="form-group">
           <label>Vehicle Details (Bike / Scooter / Cycle)</label>
@@ -676,7 +657,7 @@
 
     <!-- MAIN APP VIEW -->
     <div class="security-ribbon">
-      <i class="fa-solid fa-shield-halved"></i> Anti-Theft Pickup Lock & Dispatch Proximity Active
+      <i class="fa-solid fa-satellite"></i> Live GPS Radar & Smart Dispatch Terminal
     </div>
 
     <!-- Top Rider Header -->
@@ -733,30 +714,30 @@
       </div>
     </div>
 
-    <!-- TAB 2: RIDER EARNINGS, PAYOUT WITHDRAWAL & CASH BAG -->
+    <!-- TAB 2: RIDER EARNINGS, PAYOUT WITHDRAWAL & COD HANDOVER -->
     <div id="tab-earnings" class="tab-view">
-      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Wallet, Cash Bag & Handover</h3>
+      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Earnings, Payouts & COD Cash</h3>
 
-      <!-- Rider Earnings Hero Card with Payout / Withdraw Button -->
+      <!-- Rider Earnings Payout Card -->
       <div class="earnings-hero-card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
           <div>
             <span style="font-size: 0.72rem; color: #38bdf8; text-transform: uppercase; font-weight: 800;">
               <i class="fa-solid fa-wallet"></i> Available Earnings for Payout
             </span>
-            <div id="summary-available-payout" style="font-size: 1.95rem; font-weight: 800; color: #38bdf8;">₹0.00</div>
+            <div id="summary-rider-unpaid-earnings" style="font-size: 1.95rem; font-weight: 800; color: #38bdf8;">₹0.00</div>
             <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
-              Total Delivery Fees: <strong id="summary-rider-commission" style="color:#fff;">₹0</strong> <small id="rider-fee-rate-hint" style="color:var(--text-muted);">(₹25 per trip)</small>
+              Payout UPI: <strong id="hero-rider-upi-display" style="color:#fff;">Not Set (Add in Profile)</strong>
             </div>
           </div>
-          <button class="btn btn-primary btn-sm" style="background:#0284c7; width:auto; border:none;" onclick="openRiderPayoutModal()">
+          <button class="btn btn-primary btn-sm" style="background:#0284c7; border:none; width:auto;" onclick="openRiderPayoutModal()">
             <i class="fa-solid fa-money-bill-transfer"></i> Withdraw
           </button>
         </div>
 
         <div style="border-top: 1px solid rgba(56, 189, 248, 0.2); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted);">
-          <span>Completed Trips: <strong id="summary-total-trips" style="color:#fff;">0</strong></span>
-          <span>Paid by Admin: <strong id="summary-total-payout-paid" style="color:var(--success);">₹0.00</strong></span>
+          <span>Total Commission Earned: <strong id="summary-rider-total-earned" style="color:#fff;">₹0.00</strong></span>
+          <span>Paid by Admin: <strong id="summary-rider-total-paid" style="color:var(--success);">₹0.00</strong></span>
         </div>
       </div>
 
@@ -764,11 +745,13 @@
       <div class="cash-hero-card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
           <div>
-            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Admin COD Cash in Hand (Max ₹3,000)</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">
+              Admin COD Cash in Hand (Max ₹3,000)
+            </span>
             <div id="summary-cash-in-hand" style="font-size: 1.95rem; font-weight: 800; color: var(--primary);">₹0.00</div>
           </div>
           <button class="btn btn-primary btn-sm" style="background:#22c55e; width:auto;" onclick="openDepositModal()">
-            <i class="fa-solid fa-hand-holding-dollar"></i> Deposit to Admin
+            <i class="fa-solid fa-hand-holding-dollar"></i> Deposit COD
           </button>
         </div>
 
@@ -779,19 +762,19 @@
       </div>
 
       <!-- Earnings Payout Requests History -->
-      <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem;">Earnings Payout History (Withdrawals)</h4>
+      <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 0.75rem;">Earnings Payout History (From Admin)</h4>
       <div id="payout-history-container">
-        <p style="text-align: center; color: var(--text-muted); padding: 1rem;">No earnings withdrawal requests yet.</p>
+        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No earnings payout requests yet.</p>
       </div>
 
-      <!-- Settlement History Log -->
-      <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">Settlement Log (Admin Handover)</h4>
+      <!-- COD Settlement History Log -->
+      <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">COD Cash Handover Log (To Admin)</h4>
       <div id="settlement-history-container">
-        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No deposit requests submitted yet.</p>
+        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No COD deposit requests submitted yet.</p>
       </div>
 
       <!-- Delivered & Cancelled Trips Log -->
-      <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">Past Trips & Cancelled Log</h4>
+      <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">Past Trips & Completed Trips</h4>
       <div id="completed-orders-container">
         <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No past orders yet.</p>
       </div>
@@ -799,7 +782,7 @@
 
     <!-- TAB 3: RIDER PROFILE -->
     <div id="tab-profile" class="tab-view">
-      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Rider Profile & Vehicle</h3>
+      <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Rider Profile, UPI & Vehicle</h3>
 
       <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1.25rem; margin-bottom: 1.25rem;">
         <form id="profile-form">
@@ -816,15 +799,15 @@
             <input type="tel" id="prof-phone" class="form-input" maxlength="10" required>
           </div>
           <div class="form-group">
-            <label>Payout Receiving UPI ID</label>
-            <input type="text" id="prof-upi" class="form-input" placeholder="e.g. 9876543210@paytm">
+            <label>Your UPI ID for Earnings Payout</label>
+            <input type="text" id="prof-upi" class="form-input" placeholder="e.g. 9876543210@paytm" style="border-color:#38bdf8;" required>
           </div>
           <div class="form-group">
             <label>Vehicle Information</label>
             <input type="text" id="prof-vehicle" class="form-input" required>
           </div>
           <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">
-            <i class="fa-solid fa-floppy-disk"></i> Save Details
+            <i class="fa-solid fa-floppy-disk"></i> Save Details & UPI ID
           </button>
         </form>
       </div>
@@ -842,7 +825,7 @@
       </button>
       <button class="nav-btn" onclick="switchNav('earnings')">
         <i class="fa-solid fa-wallet"></i>
-        <span>Wallet & Cash</span>
+        <span>Earnings & Cash</span>
       </button>
       <button class="nav-btn" onclick="switchNav('profile')">
         <i class="fa-solid fa-user-shield"></i>
@@ -852,7 +835,52 @@
 
   </div>
 
-  <!-- RIDER PAYOUT WITHDRAWAL MODAL -->
+  <!-- RIDER REJECT / PASS / CANCEL TRIP MODAL (NEW SMART MECHANISM) -->
+  <div class="modal-backdrop" id="riderCancelTripModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="font-weight: 800; font-size: 1.15rem; color: var(--danger);" id="cancel-modal-heading">
+          <i class="fa-solid fa-ban"></i> Cancel / Pass Trip
+        </h3>
+        <i class="fa-solid fa-xmark" onclick="closeRiderCancelModal()" style="font-size: 1.25rem; cursor: pointer; color: var(--text-muted);"></i>
+      </div>
+
+      <div id="cancel-modal-order-tag" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+        Trip #...
+      </div>
+
+      <!-- Context Alert Notice -->
+      <div id="cancel-modal-banner" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 0.8rem 0.95rem; margin-bottom: 1rem; font-size: 0.82rem; line-height: 1.4;">
+        <!-- Dynamic text generated via JS -->
+      </div>
+
+      <input type="hidden" id="cancel-modal-order-id">
+      <input type="hidden" id="cancel-modal-order-stage">
+
+      <div class="form-group">
+        <label>Select Reason <span style="color: var(--danger);">*</span></label>
+        <select id="rider-cancel-reason-select" class="form-input" style="font-weight: 700;">
+          <!-- Dynamically populated based on stage -->
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label>Extra Note / Explanation (Optional)</label>
+        <textarea id="rider-cancel-note" class="form-input" rows="2" placeholder="Describe the reason briefly..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closeRiderCancelModal()">
+          Go Back
+        </button>
+        <button type="button" id="btn-submit-rider-cancel" class="btn btn-danger" style="flex: 1.3;" onclick="confirmRiderCancelTrip()">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIDER PAYOUT WITHDRAWAL REQUEST MODAL -->
   <div class="modal-backdrop" id="riderPayoutModal">
     <div class="modal-box">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -862,26 +890,26 @@
 
       <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; border-radius: 14px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
         <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Available Payout Balance</span>
-        <div id="modal-available-payout-display" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;">₹0.00</div>
+        <div id="modal-payout-available-display" style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;">₹0.00</div>
       </div>
 
       <div class="form-group">
         <label>Enter Amount to Withdraw (₹)</label>
-        <input type="number" id="payout-amount-input" class="form-input" placeholder="e.g. 500" min="10" required>
+        <input type="number" id="payout-req-amount" class="form-input" placeholder="e.g. 500" min="10" required>
       </div>
 
       <div class="form-group">
         <label>Verify Your Receiving UPI ID <span style="color:red;">*</span></label>
-        <input type="text" id="payout-upi-input" class="form-input" placeholder="e.g. 9876543210@paytm" required>
+        <input type="text" id="payout-req-upi" class="form-input" placeholder="e.g. rider@okaxis" required>
       </div>
 
       <button class="btn btn-primary" style="background:#0284c7;" onclick="submitRiderPayoutRequest()">
-        <i class="fa-solid fa-paper-plane"></i> Submit Withdrawal Request
+        <i class="fa-solid fa-paper-plane"></i> Send Withdrawal Request to Admin
       </button>
     </div>
   </div>
 
-  <!-- DELIVERY VERIFICATION MODAL -->
+  <!-- DELIVERY VERIFICATION MODAL (4-DIGIT OTP + BRUTE FORCE GUARD) -->
   <div class="modal-backdrop" id="deliveryVerifyModal">
     <div class="modal-box">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -938,7 +966,7 @@
       </div>
 
       <div style="background: rgba(22, 163, 74, 0.1); border: 1px solid var(--primary); border-radius: 14px; padding: 1rem; text-align: center; margin-bottom: 1rem;">
-        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Current Cash to Deposit</span>
+        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Current COD Cash to Deposit</span>
         <div id="modal-deposit-amount-display" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">₹0.00</div>
       </div>
 
@@ -995,13 +1023,11 @@
     const db = firebase.database();
 
     // ==========================================
-    // 2. STATE & LOCATION TRACKING VARIABLES
+    // 2. STATE & PAYOUT TRACKING VARIABLES
     // ==========================================
     let currentUser = null;
     let riderData = null;
     let assignedOrders = {};
-    let allSystemOrders = {};
-    let allDeliveryPartners = {};
     let stores = {};
     let allSettlements = {};
     let riderSettlements = {};
@@ -1013,8 +1039,8 @@
     let geoWatchId = null;
     let currentDepositMode = "UPI";
     let netCashInHand = 0;
-    let totalRiderDeliveryFees = 0;
-    let totalPayoutPaid = 0;
+    let totalRiderEarned = 0;
+    let totalRiderPaidPayout = 0;
     let availablePayoutBalance = 0;
     let baseRiderFeePerTrip = 25;
     const MAX_ALLOWED_CASH_LIMIT = 3000;
@@ -1134,6 +1160,7 @@
       const name = sanitizeText(document.getElementById('signup-name').value.trim());
       const email = document.getElementById('signup-email').value.trim();
       const phone = document.getElementById('signup-phone').value.trim();
+      const upiId = document.getElementById('signup-upi').value.trim();
       const vehicle = sanitizeText(document.getElementById('signup-vehicle').value.trim());
       const password = document.getElementById('signup-password').value;
 
@@ -1142,10 +1169,15 @@
         return;
       }
 
+      if (!isValidUpiId(upiId)) {
+        authError.textContent = 'Please enter a valid UPI ID (e.g., 9876543210@paytm)!';
+        return;
+      }
+
       auth.createUserWithEmailAndPassword(email, password)
         .then((cred) => {
           return db.ref('deliveryPartners/' + cred.user.uid).set({
-            name, email, phone, vehicle,
+            name, email, phone, upiId, vehicle,
             approved: false,
             online: true,
             lat: 26.4524,
@@ -1187,10 +1219,6 @@
         }
       });
 
-      db.ref('deliveryPartners').on('value', snap => {
-        allDeliveryPartners = snap.val() || {};
-      });
-
       db.ref('restaurants').on('value', snap => {
         stores = snap.val() || {};
         renderOrdersFeed();
@@ -1204,18 +1232,16 @@
         }
         if (s.deliveryCharge !== undefined && Number(s.deliveryCharge) > 0) {
           baseRiderFeePerTrip = Number(s.deliveryCharge);
-          document.getElementById('rider-fee-rate-hint').textContent = `(₹${baseRiderFeePerTrip} base delivery fee)`;
         }
-        calculateEarnings();
+        calculateFinancials();
         renderOrdersFeed();
       });
 
-      // ORIGINAL WORKING ORDERS LISTENER
       db.ref('orders').on('value', snap => {
-        allSystemOrders = snap.val() || {};
+        const allOrders = snap.val() || {};
         const myOrders = {};
 
-        Object.entries(allSystemOrders).forEach(([id, o]) => {
+        Object.entries(allOrders).forEach(([id, o]) => {
           if (o.deliveryUid === currentUser.uid) {
             myOrders[id] = o;
           }
@@ -1236,7 +1262,7 @@
         prevCancelledCount = cancelledCount;
 
         assignedOrders = myOrders;
-        calculateEarnings();
+        calculateFinancials();
         renderOrdersFeed();
       });
 
@@ -1249,7 +1275,7 @@
           }
         });
         renderSettlementHistory();
-        calculateEarnings();
+        calculateFinancials();
         renderOrdersFeed();
       });
 
@@ -1262,7 +1288,7 @@
           }
         });
         renderRiderPayoutHistory();
-        calculateEarnings();
+        calculateFinancials();
       });
     }
 
@@ -1278,6 +1304,7 @@
 
           document.getElementById('gps-coordinates-text').textContent = `${riderCurrentLat}° N, ${riderCurrentLng}° E (±${accuracy}m)`;
 
+          // 1. Broadcast to Rider Profile in Firebase
           db.ref('deliveryPartners/' + currentUser.uid).update({
             lat: riderCurrentLat,
             lng: riderCurrentLng,
@@ -1285,6 +1312,7 @@
             lastSeen: Date.now()
           });
 
+          // 2. Broadcast to active order for customer live map
           Object.entries(assignedOrders).forEach(([orderId, o]) => {
             if (o.status === 'OUT_FOR_DELIVERY') {
               db.ref(`orders/${orderId}`).update({
@@ -1331,10 +1359,10 @@
       document.getElementById('prof-name').value = riderData.name || '';
       document.getElementById('prof-email').value = currentUser.email || '';
       document.getElementById('prof-phone').value = riderData.phone || '';
-      if (document.getElementById('prof-upi')) {
-        document.getElementById('prof-upi').value = riderData.upiId || '';
-      }
+      document.getElementById('prof-upi').value = riderData.upiId || '';
       document.getElementById('prof-vehicle').value = riderData.vehicle || '';
+
+      document.getElementById('hero-rider-upi-display').textContent = riderData.upiId || 'Not Set (Add in Profile)';
     }
 
     function toggleDutyStatus() {
@@ -1361,7 +1389,7 @@
       e.preventDefault();
       const name = sanitizeText(document.getElementById('prof-name').value.trim());
       const phone = document.getElementById('prof-phone').value.trim();
-      const upiId = document.getElementById('prof-upi') ? document.getElementById('prof-upi').value.trim() : '';
+      const upiId = document.getElementById('prof-upi').value.trim();
       const vehicle = sanitizeText(document.getElementById('prof-vehicle').value.trim());
 
       if (!isValidIndianMobile(phone)) {
@@ -1369,122 +1397,18 @@
         return;
       }
 
+      if (!isValidUpiId(upiId)) {
+        showToast('Please enter a valid UPI ID (e.g. 9876543210@paytm)!', 'danger');
+        return;
+      }
+
       db.ref('deliveryPartners/' + currentUser.uid).update({ name, phone, upiId, vehicle }).then(() => {
-        showToast('Rider profile updated!', 'success');
+        showToast('Rider profile & Payout UPI updated!', 'success');
       });
     });
 
     // ==========================================
-    // 5. SMART PROXIMITY & BUSY-RIDER DISPATCH
-    // ==========================================
-    function findNextNearestFreeRider(storeLat, storeLng, rejectedRidersMap = {}, currentOrderId = null) {
-      // 1. Check who currently has active trips (Busy riders lock)
-      const busyRiderUids = new Set();
-      Object.entries(allSystemOrders).forEach(([id, ord]) => {
-        if (id !== currentOrderId && ord.deliveryUid) {
-          const st = String(ord.status || '').toUpperCase().trim();
-          if (st !== 'DELIVERED' && st !== 'CANCELLED') {
-            busyRiderUids.add(ord.deliveryUid);
-          }
-        }
-      });
-
-      // 2. Filter available free riders
-      const eligibleRiders = Object.entries(allDeliveryPartners).filter(([uid, partner]) => {
-        if (partner.approved !== true || partner.online !== true) return false;
-        if (busyRiderUids.has(uid)) return false; // 1 Order per Rider Rule!
-        if (rejectedRidersMap && rejectedRidersMap[uid] === true) return false; // Don't assign to who rejected
-        return true;
-      });
-
-      if (eligibleRiders.length === 0) return null;
-
-      // 3. Proximity: Pick closest to store
-      let bestRiderUid = null;
-      let minDistance = Infinity;
-
-      eligibleRiders.forEach(([uid, partner]) => {
-        if (partner.lat && partner.lng && storeLat && storeLng) {
-          const dist = calculateDistanceKm(storeLat, storeLng, partner.lat, partner.lng);
-          if (dist !== null && dist < minDistance) {
-            minDistance = dist;
-            bestRiderUid = uid;
-          }
-        } else if (!bestRiderUid) {
-          bestRiderUid = uid;
-        }
-      });
-
-      return bestRiderUid || eligibleRiders[0][0];
-    }
-
-    // RIDER PASSES / REJECTS TRIP (BEFORE PICKUP ONLY)
-    function passTripToNextRider(orderId) {
-      const order = assignedOrders[orderId];
-      if (!order) return;
-
-      const st = String(order.status || '').toUpperCase().trim();
-      // ANTI-THEFT LOCK: Cannot cancel after pickup!
-      if (st === 'PICKED_UP' || st === 'OUT_FOR_DELIVERY') {
-        showToast('🛑 Order dukan se pickup ho chuka hai! Ab trip cancel ya pass nahi kiya ja sakta.', 'danger');
-        return;
-      }
-
-      const reason = prompt("Trip pass karne ka kaaran (e.g. Bike issue, Out of fuel, Busy):", "Busy / Cannot deliver right now");
-      if (!reason) return;
-
-      if (!confirm("Confirm: Kya aap yeh order chhodkar agle nazdeeki rider ko pass karna chahte hain?")) return;
-
-      const store = stores[order.restaurantId] || {};
-      const storeLat = store.lat || 26.4524;
-      const storeLng = store.lng || 89.9723;
-
-      const rejectedRiders = order.rejectedRiders || {};
-      rejectedRiders[currentUser.uid] = true;
-
-      const nextRiderUid = findNextNearestFreeRider(storeLat, storeLng, rejectedRiders, orderId);
-
-      const updates = {
-        rejectedRiders: rejectedRiders,
-        updatedAt: Date.now()
-      };
-
-      if (nextRiderUid) {
-        const nextPartner = allDeliveryPartners[nextRiderUid] || {};
-        updates.deliveryUid = nextRiderUid;
-        updates.riderName = nextPartner.name || 'Rider';
-        updates.riderPhone = nextPartner.phone || '';
-        updates.riderPassLog = {
-          passedByUid: currentUser.uid,
-          passedByName: riderData?.name || 'Rider',
-          reason: sanitizeText(reason),
-          passedAt: Date.now(),
-          reassignedTo: nextRiderUid
-        };
-
-        db.ref('orders/' + orderId).update(updates).then(() => {
-          showToast(`⚡ Order pass ho gaya aur agle nazdeeki rider (${nextPartner.name || 'Rider'}) ko assign ho gaya!`, 'info');
-        });
-      } else {
-        updates.deliveryUid = null;
-        updates.riderName = null;
-        updates.riderPhone = null;
-        updates.riderPassLog = {
-          passedByUid: currentUser.uid,
-          passedByName: riderData?.name || 'Rider',
-          reason: sanitizeText(reason),
-          passedAt: Date.now(),
-          reassignedTo: null
-        };
-
-        db.ref('orders/' + orderId).update(updates).then(() => {
-          showToast('⚠️ Abhi koi dusra free rider online nahi hai. Order Admin & Store queue me wapas chala gaya hai.', 'warning');
-        });
-      }
-    }
-
-    // ==========================================
-    // 6. ACTIVE ORDERS FEED & ROUTING
+    // 5. ACTIVE ORDERS FEED & PROFESSIONAL GPS ROUTING
     // ==========================================
     function renderOrdersFeed() {
       const activeContainer = document.getElementById('active-orders-container');
@@ -1528,19 +1452,14 @@
     }
 
     function renderActiveCard(orderId, o, store) {
-      const rawItems = Array.isArray(o.items) ? o.items : Object.values(o.items || {});
-      const itemsList = rawItems.map(i => `${i.qty || 1}× ${escapeHtml(i.name || 'Item')}`).join(', ');
+      const itemsList = (o.items || []).map(i => `${i.qty}× ${escapeHtml(i.name)}`).join(', ');
       const tripFee = getRiderFeeForOrder(o);
       const subAmt = Number(o.subtotalAmount || o.totalAmount || 0);
       const delCharge = Number(o.deliveryCharge || 0);
-      const statusUpper = String(o.status || 'PLACED').toUpperCase().trim();
 
-      // Check if order has already been picked up
-      const isPickedUp = statusUpper === 'PICKED_UP' || statusUpper === 'OUT_FOR_DELIVERY';
-
-      let statusPill = `<span class="order-status-pill pill-ready">${statusUpper}</span>`;
-      if (statusUpper === 'PICKED_UP') statusPill = `<span class="order-status-pill pill-picked">PICKED UP</span>`;
-      if (statusUpper === 'OUT_FOR_DELIVERY') statusPill = `<span class="order-status-pill pill-out">OUT FOR DELIVERY</span>`;
+      let statusPill = `<span class="order-status-pill pill-ready">${o.status}</span>`;
+      if (o.status === 'PICKED_UP') statusPill = `<span class="order-status-pill pill-picked">PICKED UP</span>`;
+      if (o.status === 'OUT_FOR_DELIVERY') statusPill = `<span class="order-status-pill pill-out">OUT FOR DELIVERY</span>`;
 
       const isUpi = o.paymentMode === 'UPI';
       const isUpiPaid = isUpi && o.paymentStatus === 'VERIFIED';
@@ -1550,21 +1469,21 @@
       let actionButtonHtml = '';
       if (riderData?.approved !== true) {
         actionButtonHtml = `<button class="btn btn-outline" disabled style="opacity:0.5;">Account Approval Pending from Admin</button>`;
-      } else if (isCashCapLocked && statusUpper === 'PLACED') {
+      } else if (isCashCapLocked && o.status === 'PLACED') {
         actionButtonHtml = `<button class="btn btn-danger btn-action-lg" onclick="switchNav('earnings'); openDepositModal();">🚨 Cash Limit ₹3,000 Exceeded - Deposit First</button>`;
-      } else if (['READY_FOR_PICKUP', 'ACCEPTED', 'PREPARING', 'PACKING', 'PLACED'].includes(statusUpper)) {
+      } else if (o.status === 'READY_FOR_PICKUP' || o.status === 'ACCEPTED' || o.status === 'PREPARING' || o.status === 'PACKING' || o.status === 'PLACED') {
         actionButtonHtml = `
           <button class="btn btn-primary btn-action-lg" onclick="updateOrderStatus('${orderId}', 'PICKED_UP')">
             <i class="fa-solid fa-box"></i> Confirm Grocery Picked Up
           </button>
         `;
-      } else if (statusUpper === 'PICKED_UP') {
+      } else if (o.status === 'PICKED_UP') {
         actionButtonHtml = `
           <button class="btn btn-info btn-action-lg" onclick="updateOrderStatus('${orderId}', 'OUT_FOR_DELIVERY')">
             <i class="fa-solid fa-motorcycle"></i> Start Doorstep Delivery Route
           </button>
         `;
-      } else if (statusUpper === 'OUT_FOR_DELIVERY') {
+      } else if (o.status === 'OUT_FOR_DELIVERY') {
         if (isUpiPending) {
           actionButtonHtml = `
             <button class="btn btn-outline btn-action-lg" style="border-color:var(--warning); color:var(--warning);" onclick="showToast('⚠️ Hold Delivery! Customer UPI is not verified by Admin yet.', 'danger')">
@@ -1631,18 +1550,23 @@
         `;
       }
 
+      // Store GPS navigation link
       const storeMapsLink = (store.lat && store.lng)
         ? `https://www.google.com/maps/dir/?api=1&destination=${store.lat},${store.lng}`
         : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((store.name || '') + ' ' + (store.address || 'Gossaigaon'))}`;
 
+      // Customer Doorstep GPS navigation link
       const customerMapsLink = (o.customerLat && o.customerLng)
         ? `https://www.google.com/maps/dir/?api=1&destination=${o.customerLat},${o.customerLng}`
         : (o.locationLink ? o.locationLink : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.address || 'Gossaigaon')}`);
 
       const cleanCustomerPhone = (o.phone || '').replace(/[^0-9]/g, '');
 
+      // Realtime Distances
       const distToStore = (riderCurrentLat && store.lat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, store.lat, store.lng) : null;
       const distToCustomer = (riderCurrentLat && o.customerLat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, o.customerLat, o.customerLng) : null;
+
+      const isPickedUp = (o.status === 'PICKED_UP' || o.status === 'OUT_FOR_DELIVERY');
 
       return `
         <div class="delivery-order-card">
@@ -1727,26 +1651,15 @@
             </div>
           </div>
 
+          <!-- Main Action Button (Pickup, Start Route, Deliver) -->
           <div style="margin-top: 0.5rem;">
             ${actionButtonHtml}
           </div>
 
-          <!-- ACTION BUTTONS: PASS TRIP (LOCKED AFTER PICKUP) & REPORT ISSUE -->
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 0.85rem; flex-wrap: wrap;">
-            <!-- PASS TRIP BUTTON: Only visible BEFORE pickup! Once picked up, it is locked. -->
-            ${!isPickedUp ? `
-              <button class="btn btn-outline btn-sm" style="color:var(--warning); border-color:rgba(245, 158, 11, 0.5); width:auto;" onclick="passTripToNextRider('${orderId}')" title="Pass trip to next available rider">
-                <i class="fa-solid fa-person-walking-arrow-right"></i> Pass / Reject Trip
-              </button>
-            ` : `
-              <span style="font-size:0.72rem; color:var(--text-muted); font-weight:800; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:8px;">
-                <i class="fa-solid fa-lock" style="color:var(--primary);"></i> Items Picked Up (Trip Locked)
-              </span>
-            `}
-
-            <!-- REPORT ISSUE BUTTON -->
-            <button class="btn btn-outline btn-sm" style="width:auto; padding:4px 10px; font-size:0.74rem; color:var(--danger); border-color:rgba(239,68,68,0.4);" onclick="reportCustomerFakeIssue('${orderId}')">
-              <i class="fa-solid fa-triangle-exclamation"></i> Customer Unreachable?
+          <!-- Dedicated Trip Rejection & Cancellation Button -->
+          <div style="margin-top: 0.85rem; display: flex; justify-content: flex-end;">
+            <button class="btn btn-outline btn-sm" style="width: auto; padding: 6px 12px; font-size: 0.76rem; color: var(--danger); border-color: rgba(239,68,68,0.45);" onclick="openRiderCancelModal('${orderId}')">
+              <i class="fa-solid fa-ban"></i> ${isPickedUp ? 'Report Customer Issue / Emergency' : 'Pass / Reject Trip'}
             </button>
           </div>
         </div>
@@ -1780,42 +1693,157 @@
       `;
     }
 
-    // ANTI-THEFT GUARD: If items are already picked up, rider CANNOT cancel the order themselves!
-    function reportCustomerFakeIssue(orderId) {
+    // ==========================================
+    // 6. SMART RIDER TRIP REJECTION / CANCELLATION
+    // ==========================================
+    function openRiderCancelModal(orderId) {
       const order = assignedOrders[orderId];
       if (!order) return;
 
-      const st = String(order.status || '').toUpperCase().trim();
-      const isPickedUp = st === 'PICKED_UP' || st === 'OUT_FOR_DELIVERY';
+      document.getElementById('cancel-modal-order-id').value = orderId;
+      document.getElementById('cancel-modal-order-tag').textContent = `Order: #${orderId.slice(-6)} • Current Status: ${order.status}`;
+      document.getElementById('rider-cancel-note').value = '';
 
-      if (isPickedUp) {
-        const issue = prompt("Customer unreachable / delivery issue details likhein (Admin ko alert jayega):", "Customer phone switched off / Door locked");
-        if (!issue) return;
+      const isPickedUp = (order.status === 'PICKED_UP' || order.status === 'OUT_FOR_DELIVERY');
+      document.getElementById('cancel-modal-order-stage').value = isPickedUp ? 'POST_PICKUP' : 'PRE_PICKUP';
 
-        db.ref('orders/' + orderId).update({
-          customerIssueReported: true,
-          issueDetails: sanitizeText(issue),
-          updatedAt: Date.now()
-        }).then(() => {
-          showToast('⚠️ Alert Admin ko bhej diya gaya hai! Samaan aapke bag me hai, bina Admin approval ke order cancel nahi ho sakta.', 'warning');
+      const heading = document.getElementById('cancel-modal-heading');
+      const banner = document.getElementById('cancel-modal-banner');
+      const reasonSelect = document.getElementById('rider-cancel-reason-select');
+      const confirmBtn = document.getElementById('btn-submit-rider-cancel');
+
+      reasonSelect.innerHTML = '';
+
+      if (!isPickedUp) {
+        // PRE-PICKUP: The order goes back to other riders or Admin (Customer order NOT destroyed)
+        heading.innerHTML = `<i class="fa-solid fa-arrows-split-up-and-left"></i> Pass / Reject Trip Assignment`;
+        heading.style.color = 'var(--warning)';
+        confirmBtn.className = 'btn btn-warning';
+        confirmBtn.innerHTML = `<i class="fa-solid fa-arrows-split-up-and-left"></i> Pass to Other Rider`;
+
+        banner.style.background = 'rgba(245, 158, 11, 0.12)';
+        banner.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        banner.innerHTML = `
+          <strong style="color:var(--warning); display:block; margin-bottom:3px;"><i class="fa-solid fa-circle-info"></i> Pre-Pickup Re-assignment:</strong>
+          Passing this trip will release it immediately. The customer order stays active and will be re-assigned to another available rider or dispatch hub.
+        `;
+
+        const prePickupReasons = [
+          "Vehicle breakdown / Tyre puncture",
+          "Sudden personal emergency / Ending shift",
+          "Store / Pickup distance is too far",
+          "Heavy rainfall / Severe waterlogging / Unsafe route",
+          "Store items taking too long / Store closed",
+          "Assigned by mistake / Multiple ongoing tasks",
+          "Other reasons (explained below)"
+        ];
+
+        prePickupReasons.forEach(r => {
+          reasonSelect.innerHTML += `<option value="${r}">${r}</option>`;
         });
+
+      } else {
+        // POST-PICKUP: Items are physically with the rider!
+        heading.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Emergency / Customer Issue`;
+        heading.style.color = 'var(--danger)';
+        confirmBtn.className = 'btn btn-danger';
+        confirmBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Confirm Cancellation`;
+
+        banner.style.background = 'rgba(239, 68, 68, 0.15)';
+        banner.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        banner.innerHTML = `
+          <strong style="color:var(--danger); display:block; margin-bottom:3px;"><i class="fa-solid fa-triangle-exclamation"></i> Grocery Already in Hand:</strong>
+          You have already picked up the items from the store. Cancelling will notify the Store and Admin immediately. If customer refused or switched off phone, return items to store.
+        `;
+
+        const postPickupReasons = [
+          "Customer phone switched off / Unreachable (Called 3+ times)",
+          "Customer refused delivery at doorstep",
+          "Fake / Incomplete customer address, not found",
+          "Accident / Vehicle breakdown mid-way (Items safe)",
+          "Customer cancelled doorstep delivery",
+          "Other critical issue"
+        ];
+
+        postPickupReasons.forEach(r => {
+          reasonSelect.innerHTML += `<option value="${r}">${r}</option>`;
+        });
+      }
+
+      document.getElementById('riderCancelTripModal').classList.add('open');
+      window.history.pushState({ modal: 'cancelTrip' }, '');
+    }
+
+    function closeRiderCancelModal() {
+      document.getElementById('riderCancelTripModal').classList.remove('open');
+    }
+
+    function confirmRiderCancelTrip() {
+      const orderId = document.getElementById('cancel-modal-order-id').value;
+      const stage = document.getElementById('cancel-modal-order-stage').value;
+      const selectedReason = document.getElementById('rider-cancel-reason-select').value;
+      const customNote = sanitizeText(document.getElementById('rider-cancel-note').value.trim());
+
+      const order = assignedOrders[orderId];
+      if (!order) {
+        closeRiderCancelModal();
         return;
       }
 
-      // If NOT yet picked up, allow cancellation
-      const issue = prompt("Enter reason (e.g. Customer phone switched off, Fake address, Refused delivery):", "Customer unreachable / Phone switched off");
-      if (!issue) return;
+      const fullReason = customNote ? `${selectedReason} - Note: ${customNote}` : selectedReason;
 
-      if (!confirm("Cancel this trip and report customer issue to Admin & Store?")) return;
+      if (stage === 'PRE_PICKUP') {
+        // Case 1: Re-assign / Release to pool without cancelling customer order
+        const updates = {
+          deliveryUid: null,
+          riderLat: null,
+          riderLng: null,
+          lastLocationUpdate: null,
+          updatedAt: Date.now()
+        };
 
-      db.ref('orders/' + orderId).update({
-        status: 'CANCELLED',
-        cancelledBy: 'RIDER_REPORT',
-        cancelReason: sanitizeText(issue),
-        updatedAt: Date.now()
-      }).then(() => {
-        showToast('🚨 Issue reported to Admin & order marked Cancelled.', 'info');
-      });
+        // Maintain store status cleanly (if it was READY_FOR_PICKUP, keep it READY_FOR_PICKUP)
+        if (order.status === 'READY_FOR_PICKUP') {
+          updates.status = 'READY_FOR_PICKUP';
+        }
+
+        // Record rejection log so auto-dispatch knows this rider passed
+        updates[`rejectedByRiders/${currentUser.uid}`] = {
+          riderName: riderData?.name || 'Rider',
+          riderPhone: riderData?.phone || '',
+          reason: fullReason,
+          timestamp: Date.now()
+        };
+
+        db.ref('orders/' + orderId).update(updates).then(() => {
+          closeRiderCancelModal();
+          showToast('✅ Trip passed! Order unassigned for other riders.', 'info');
+        }).catch(err => {
+          showToast('Error: ' + err.message, 'danger');
+        });
+
+      } else {
+        // Case 2: Post-pickup Cancellation (Customer issue / emergency)
+        let updates = {
+          status: 'CANCELLED',
+          cancelledBy: 'RIDER',
+          cancelReason: fullReason,
+          updatedAt: Date.now()
+        };
+
+        // Special breakdown scenario mid-way: alert admin & revert so items can be handed over
+        if (selectedReason.includes('Accident') || selectedReason.includes('breakdown')) {
+          updates.emergencyAlert = true;
+          updates.emergencyDetails = `Rider ${riderData?.name || ''} breakdown: ${fullReason}`;
+        }
+
+        db.ref('orders/' + orderId).update(updates).then(() => {
+          closeRiderCancelModal();
+          showToast('🚨 Trip cancelled & reported to Store & Admin!', 'danger');
+        }).catch(err => {
+          showToast('Error: ' + err.message, 'danger');
+        });
+      }
     }
 
     function updateOrderStatus(orderId, newStatus) {
@@ -1957,52 +1985,49 @@
     }
 
     // ==========================================
-    // 8. FINANCIALS, EARNINGS & PAYOUT SYSTEM
+    // 8. FINANCIALS, EARNINGS PAYOUT & COD SETTLEMENT
     // ==========================================
-    function calculateEarnings() {
+    function calculateFinancials() {
       let totalCodCollected = 0;
       let completedTrips = 0;
-      totalRiderDeliveryFees = 0;
+      totalRiderEarned = 0;
 
       Object.values(assignedOrders).forEach(o => {
         if (o.status === 'DELIVERED') {
           completedTrips++;
-          totalRiderDeliveryFees += getRiderFeeForOrder(o);
+          totalRiderEarned += getRiderFeeForOrder(o);
           if (o.paymentMode !== 'UPI') {
             totalCodCollected += Number(o.totalAmount || 0);
           }
         }
       });
 
+      // 1. Calculate COD Cash In Hand
       let totalDeposited = 0;
       Object.values(riderSettlements).forEach(s => {
         if (s.status === 'APPROVED') {
           totalDeposited += Number(s.amount || 0);
         }
       });
-
       netCashInHand = Math.max(0, totalCodCollected - totalDeposited);
 
-      totalPayoutPaid = 0;
+      // 2. Calculate Rider Payout Balance (Earnings)
+      totalRiderPaidPayout = 0;
       Object.values(myRiderPayouts).forEach(p => {
         if (p.status === 'PAID') {
-          totalPayoutPaid += Number(p.amount || 0);
+          totalRiderPaidPayout += Number(p.amount || 0);
         }
       });
-      availablePayoutBalance = Math.max(0, totalRiderDeliveryFees - totalPayoutPaid);
+      availablePayoutBalance = Math.max(0, totalRiderEarned - totalRiderPaidPayout);
 
-      document.getElementById('summary-total-trips').textContent = completedTrips;
-      document.getElementById('summary-rider-commission').textContent = '₹' + totalRiderDeliveryFees.toFixed(0);
+      // Update UI displays
+      document.getElementById('summary-rider-unpaid-earnings').textContent = '₹' + availablePayoutBalance.toFixed(2);
+      document.getElementById('summary-rider-total-earned').textContent = '₹' + totalRiderEarned.toFixed(2);
+      document.getElementById('summary-rider-total-paid').textContent = '₹' + totalRiderPaidPayout.toFixed(2);
+
       document.getElementById('summary-total-cod').textContent = '₹' + totalCodCollected.toFixed(2);
       document.getElementById('summary-total-deposited').textContent = '₹' + totalDeposited.toFixed(2);
       document.getElementById('summary-cash-in-hand').textContent = '₹' + netCashInHand.toFixed(2);
-
-      if (document.getElementById('summary-available-payout')) {
-        document.getElementById('summary-available-payout').textContent = '₹' + availablePayoutBalance.toFixed(2);
-      }
-      if (document.getElementById('summary-total-payout-paid')) {
-        document.getElementById('summary-total-payout-paid').textContent = '₹' + totalPayoutPaid.toFixed(2);
-      }
 
       const limitBanner = document.getElementById('cash-limit-banner');
       if (netCashInHand >= MAX_ALLOWED_CASH_LIMIT) {
@@ -2012,14 +2037,15 @@
       }
     }
 
+    // --- Rider Payout Request Functions ---
     function openRiderPayoutModal() {
       if (availablePayoutBalance < 10) {
         showToast('Withdrawal ke liye minimum ₹10 balance hona chahiye!', 'info');
         return;
       }
-      document.getElementById('modal-available-payout-display').textContent = '₹' + availablePayoutBalance.toFixed(2);
-      document.getElementById('payout-amount-input').value = Math.floor(availablePayoutBalance);
-      document.getElementById('payout-upi-input').value = riderData?.upiId || '';
+      document.getElementById('modal-payout-available-display').textContent = `₹${availablePayoutBalance.toFixed(2)}`;
+      document.getElementById('payout-req-amount').value = Math.floor(availablePayoutBalance);
+      document.getElementById('payout-req-upi').value = riderData?.upiId || '';
       document.getElementById('riderPayoutModal').classList.add('open');
       window.history.pushState({ modal: 'payout' }, '');
     }
@@ -2029,8 +2055,8 @@
     }
 
     function submitRiderPayoutRequest() {
-      const amount = Number(document.getElementById('payout-amount-input').value || 0);
-      const upi = document.getElementById('payout-upi-input').value.trim();
+      const amount = Number(document.getElementById('payout-req-amount').value || 0);
+      const upi = document.getElementById('payout-req-upi').value.trim();
 
       if (amount <= 0 || amount > availablePayoutBalance) {
         showToast(`Invalid Amount! Maximum ₹${availablePayoutBalance.toFixed(2)} withdraw kar sakte hain.`, 'danger');
@@ -2038,13 +2064,13 @@
       }
 
       if (!isValidUpiId(upi)) {
-        showToast('Valid UPI ID enter karein (e.g. 9876543210@paytm)!', 'danger');
+        showToast('Please enter a valid UPI ID (e.g. 9876543210@paytm)!', 'danger');
         return;
       }
 
       const hasPending = Object.values(myRiderPayouts).some(p => p.status === 'PENDING');
       if (hasPending) {
-        showToast('Aapki ek withdrawal request pehle se Admin ke paas pending hai!', 'danger');
+        showToast('Aapki ek withdrawal request pehle se pending hai!', 'danger');
         return;
       }
 
@@ -2061,19 +2087,18 @@
 
       db.ref('riderPayouts').push(payoutData).then(() => {
         closeRiderPayoutModal();
-        showToast(`🎉 ₹${amount.toFixed(2)} ki Payout Request Admin ko bhej di gayi hai!`, 'success');
+        showToast(`🎉 ₹${amount.toFixed(2)} ki Payout Request bhej di gayi hai!`, 'success');
       });
     }
 
     function renderRiderPayoutHistory() {
       const container = document.getElementById('payout-history-container');
-      if (!container) return;
       container.innerHTML = '';
 
       const entries = Object.entries(myRiderPayouts).sort((a,b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
 
       if (entries.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No earnings withdrawal requests yet.</p>';
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No earnings payout requests yet.</p>';
         return;
       }
 
@@ -2081,24 +2106,24 @@
         const isPaid = p.status === 'PAID';
         const isRejected = p.status === 'REJECTED';
         let badgeClass = 'settlement-pending';
-        let statusText = 'PENDING';
+        let statusText = 'PENDING ADMIN APPROVAL';
 
         if (isPaid) {
           badgeClass = 'settlement-approved';
           statusText = 'PAID BY ADMIN';
         } else if (isRejected) {
-          badgeClass = 'settlement-pending';
+          badgeClass = 'settlement-rejected';
           statusText = 'REJECTED';
         }
 
         container.innerHTML += `
-          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.65rem; display: flex; justify-content: space-between; align-items: center;">
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
             <div>
               <strong style="color: #38bdf8; font-size: 0.95rem;">₹${Number(p.amount || 0).toFixed(2)}</strong>
-              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
-                UPI: ${escapeHtml(p.riderUpiId)} ${p.adminRef ? `• Ref: ${escapeHtml(p.adminRef)}` : ''}
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                UPI: ${escapeHtml(p.riderUpiId)} ${p.adminRef ? `• Ref/UTR: ${escapeHtml(p.adminRef)}` : ''}
               </div>
-              <small style="color: var(--text-muted); font-size: 0.68rem;">${new Date(p.createdAt).toLocaleString()}</small>
+              <small style="color: var(--text-muted); font-size: 0.7rem;">${new Date(p.createdAt).toLocaleString()}</small>
             </div>
             <span class="settlement-badge ${badgeClass}">${statusText}</span>
           </div>
@@ -2106,6 +2131,7 @@
       });
     }
 
+    // --- COD Cash Deposit Modal Functions ---
     function openDepositModal() {
       if (netCashInHand <= 0) {
         showToast('Aapke paas deposit karne ke liye koi cash balance nahi hai!', 'info');
@@ -2213,7 +2239,7 @@
     }
 
     // ==========================================
-    // 9. NAVIGATION & BACK BUTTON CONTROLLER
+    // 9. NAVIGATION & NATIVE BACK BUTTON CONTROLLER
     // ==========================================
     let currentRiderTab = 'active';
     let riderLastBackTime = 0;
@@ -2241,20 +2267,38 @@
       }
     }
 
+    // Hardware Back Button Interceptor
     window.addEventListener('popstate', () => {
+      const cancelTripModal = document.getElementById('riderCancelTripModal');
       const verifyModal = document.getElementById('deliveryVerifyModal');
       const depositModal = document.getElementById('depositModal');
       const payoutModal = document.getElementById('riderPayoutModal');
 
-      if (payoutModal && payoutModal.classList.contains('open')) { payoutModal.classList.remove('open'); return; }
-      if (verifyModal && verifyModal.classList.contains('open')) { verifyModal.classList.remove('open'); return; }
-      if (depositModal && depositModal.classList.contains('open')) { depositModal.classList.remove('open'); return; }
+      // 1. Agar koi modal khula hai to sirf modal band karo
+      if (cancelTripModal && cancelTripModal.classList.contains('open')) {
+        cancelTripModal.classList.remove('open');
+        return;
+      }
+      if (payoutModal && payoutModal.classList.contains('open')) {
+        payoutModal.classList.remove('open');
+        return;
+      }
+      if (verifyModal && verifyModal.classList.contains('open')) {
+        verifyModal.classList.remove('open');
+        return;
+      }
+      if (depositModal && depositModal.classList.contains('open')) {
+        depositModal.classList.remove('open');
+        return;
+      }
 
+      // 2. Agar Earnings ya Profile tab par hai to wapas Active Trips par aao
       if (currentRiderTab !== 'active') {
         switchNav('active', false);
         return;
       }
 
+      // 3. Double Tap to Exit
       const now = Date.now();
       if (now - riderLastBackTime < 2000) {
         window.history.back();
