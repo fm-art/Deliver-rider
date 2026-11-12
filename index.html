@@ -400,7 +400,7 @@
       transition: width 1s linear;
     }
 
-    /* Route Stop Cards (Progressive Flow) */
+    /* Route Stop Cards */
     .stop-card {
       background: rgba(255,255,255,0.03);
       border: 1.5px solid var(--border);
@@ -422,7 +422,7 @@
     }
 
     .stop-card.locked-stop {
-      opacity: 0.55;
+      opacity: 0.65;
       background: rgba(0,0,0,0.3);
       border-style: dashed;
     }
@@ -481,6 +481,15 @@
     .payment-box.upi-pending { background: rgba(245, 158, 11, 0.15); border: 1.5px dashed var(--danger); }
 
     .cod-val { font-size: 1.45rem; font-weight: 800; color: var(--primary); }
+
+    /* Location Sharer Box */
+    .location-box {
+      background: var(--bg);
+      border-radius: 14px;
+      padding: 0.9rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+    }
 
     /* Hero Cards */
     .cash-hero-card {
@@ -776,7 +785,7 @@
 
       <h4 style="font-size: 0.95rem; font-weight: 800; margin: 1.5rem 0 0.75rem;">Past Completed Trips</h4>
       <div id="completed-orders-container">
-        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No past trips yet.</p>
+        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No past completed trips yet.</p>
       </div>
     </div>
 
@@ -852,7 +861,6 @@
       <div id="cancel-modal-banner" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 0.8rem 0.95rem; margin-bottom: 1rem; font-size: 0.82rem; line-height: 1.4;"></div>
 
       <input type="hidden" id="cancel-modal-trip-id">
-      <input type="hidden" id="cancel-modal-order-stage">
 
       <div class="form-group">
         <label>Select Reason <span style="color: var(--danger);">*</span></label>
@@ -938,7 +946,7 @@
     </div>
   </div>
 
-  <!-- DELIVERY VERIFICATION MODAL (4-DIGIT OTP) -->
+  <!-- DELIVERY VERIFICATION MODAL (CUSTOMER 4-DIGIT PIN) -->
   <div class="modal-backdrop" id="deliveryVerifyModal">
     <div class="modal-box">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -1115,6 +1123,33 @@
         Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
         Math.sin(dLon / 2) * Math.sin(dLon / 2);
       return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    // Deterministic 4-Digit Pickup Code (Matches exact Store Panel calculation)
+    function getStorePickupCode(order, orderId) {
+      if (order && order.pickupOtp) return String(order.pickupOtp);
+      const cleanId = String(orderId || '');
+      let hash = 0;
+      for (let i = 0; i < cleanId.length; i++) {
+        hash = (hash << 5) - hash + cleanId.charCodeAt(i);
+        hash |= 0;
+      }
+      return String(Math.abs(hash) % 9000 + 1000);
+    }
+
+    function validateSettlementUtr(utr) {
+      const cleanUtr = String(utr || '').trim();
+      if (!/^\d{12}$/.test(cleanUtr)) {
+        return { valid: false, reason: 'UTR number exact 12 digits ka hona chahiye!' };
+      }
+      if (/^(\d)\1{11}$/.test(cleanUtr) || cleanUtr === '123456789012' || cleanUtr.startsWith('0000')) {
+        return { valid: false, reason: '🚨 Fake UTR pattern allowed nahi hai!' };
+      }
+      const isDuplicate = Object.values(allSettlements).some(s => String(s.utr || '').trim() === cleanUtr);
+      if (isDuplicate) {
+        return { valid: false, reason: '🚨 Yeh UTR number pehle se use ho chuka hai!' };
+      }
+      return { valid: true };
     }
 
     function showToast(msg, type = 'success') {
@@ -1417,7 +1452,6 @@
 
       Object.entries(assignedOrders).forEach(([orderId, o]) => {
         const isCompleted = (o.status === 'DELIVERED' || o.status === 'CANCELLED');
-        // Group orders from same customer session
         const groupKey = o.batchGroupId || `${o.customerUid}_${o.deliveryOtp || o.createdAt}`;
         const targetMap = isCompleted ? completedTripsMap : activeTripsMap;
 
@@ -1570,7 +1604,7 @@
       }
 
       // -------------------------------------------------------------
-      // STAGE 2 & 3: PROGRESSIVE STORE PICKUPS ➡️ CUSTOMER DOORSTEP
+      // STAGE 2 & 3: STORE PICKUPS WITH PICKUP CODE DISPLAY (NO TYPING)
       // -------------------------------------------------------------
       
       // Sort Stores by Distance from Rider: NEAREST FIRST!
@@ -1591,7 +1625,6 @@
         return a.distance - b.distance;
       });
 
-      // Find which stop is current active target
       const currentActiveStopIndex = storeStops.findIndex(s => !s.isPickedUp);
       const allStoresPickedUp = (currentActiveStopIndex === -1);
 
@@ -1606,13 +1639,17 @@
         const raw = Array.isArray(stop.order.items) ? stop.order.items : Object.values(stop.order.items || {});
         const itemsTxt = raw.map(i => `${i.qty}× ${escapeHtml(i.name)}`).join(', ');
 
+        const orderStatus = stop.order.status || 'PLACED';
+        const isReadyForPickup = (orderStatus === 'READY_FOR_PICKUP');
+        // Exact code shown directly to rider
+        const pickupCode = getStorePickupCode(stop.order, stop.order.orderId);
+
         if (stop.isPickedUp) {
-          // Already Picked Up
           stopsHtml += `
             <div class="stop-card completed-stop">
               <span class="stop-badge stop-badge-green"><i class="fa-solid fa-check"></i> STOP ${index + 1}: PICKED UP</span>
               <strong style="display:block; color:#fff; font-size:0.95rem;">${escapeHtml(stop.store.name || 'Store')}</strong>
-              <small style="color:#34d399;">Items verified and in delivery bag.</small>
+              <small style="color:#34d399;">Order verified & picked up.</small>
             </div>
           `;
         } else if (isCurrentTarget) {
@@ -1633,17 +1670,43 @@
                 ${stop.store.phone ? `<a href="tel:${stop.store.phone}" class="action-btn-sm"><i class="fa-solid fa-phone"></i> Call Store</a>` : ''}
               </div>
 
-              <div style="background:rgba(0,0,0,0.3); border-radius:10px; padding:0.65rem; margin-top:8px; font-size:0.78rem;">
-                <strong>Collect Items:</strong> ${itemsTxt}
+              <!-- ⭐ DIRECT DISPLAY OF PICKUP CODE TO RIDER (NO TYPING) -->
+              <div style="background: rgba(56, 189, 248, 0.12); border: 1.5px dashed #38bdf8; border-radius: 12px; padding: 0.75rem 0.9rem; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <span style="font-size: 0.7rem; color: #38bdf8; font-weight: 800; text-transform: uppercase; display: block;">
+                    📦 Store Pickup Code (Dukandar ko batayein):
+                  </span>
+                  <small style="color: #cbd5e1; font-size: 0.72rem;">Dukandar se yahi code wala parcel collect karein</small>
+                </div>
+                <div style="font-family: monospace; font-size: 1.4rem; font-weight: 900; color: #38bdf8; letter-spacing: 2.5px; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(56,189,248,0.4);">
+                  ${pickupCode}
+                </div>
               </div>
 
-              <button class="btn btn-primary" style="margin-top:10px; padding:0.85rem;" onclick="confirmStoreStopPickup('${stop.order.orderId}')">
-                <i class="fa-solid fa-box-open"></i> Confirm Picked Up from ${escapeHtml(stop.store.name || 'Store')}
-              </button>
+              <div style="background:rgba(0,0,0,0.3); border-radius:10px; padding:0.65rem; margin-top:8px; font-size:0.78rem;">
+                <strong>Items:</strong> ${itemsTxt}
+              </div>
+
+              <!-- STRICT READY-TO-PICKUP CHECK & 1-CLICK PICKUP -->
+              ${!isReadyForPickup ? `
+                <div style="background:rgba(245,158,11,0.12); border:1.5px dashed var(--warning); border-radius:12px; padding:0.75rem; margin-top:10px; font-size:0.78rem; color:#fef08a;">
+                  <i class="fa-solid fa-hourglass-half fa-spin" style="color:var(--warning);"></i> <strong>Store Abhi Pack Kar Raha Hai (Pickup Locked):</strong>
+                  <div>Dukandar jab tak console me <strong>"Mark Packed & Ready"</strong> nahi karenge, tab tak pickup allowed nahi hai. Store par wait karein.</div>
+                </div>
+                <button class="btn btn-outline" disabled style="margin-top:8px; opacity:0.6; cursor:not-allowed; border-color:var(--warning); color:var(--warning);">
+                  <i class="fa-solid fa-lock"></i> Pickup Locked: Waiting for Store Ready
+                </button>
+              ` : `
+                <div style="background:rgba(16,185,129,0.12); border:1px solid var(--primary); border-radius:12px; padding:0.65rem 0.85rem; margin-top:10px; font-size:0.78rem; color:#34d399;">
+                  <i class="fa-solid fa-circle-check"></i> <strong>Order Packed & Ready!</strong> Dukandar se code <strong>${pickupCode}</strong> match karke parcel lein.
+                </div>
+                <button class="btn btn-primary" style="margin-top:8px; padding:0.95rem; font-size:1rem;" onclick="confirmStoreStopPickup('${stop.order.orderId}')">
+                  <i class="fa-solid fa-box-open"></i> Confirm Order Picked Up (Code: ${pickupCode})
+                </button>
+              `}
             </div>
           `;
         } else {
-          // FUTURE STORE STOP LOCKED
           stopsHtml += `
             <div class="stop-card locked-stop">
               <span class="stop-badge stop-badge-locked"><i class="fa-solid fa-lock"></i> STOP ${index + 1}: NEXT STORE</span>
@@ -1666,7 +1729,6 @@
       const waLink = waPhone ? `https://wa.me/${waPhone}?text=${waMsg}` : '';
 
       if (!allStoresPickedUp) {
-        // Customer Section Locked
         customerSectionHtml = `
           <div class="stop-card locked-stop">
             <span class="stop-badge stop-badge-locked"><i class="fa-solid fa-lock"></i> FINAL STOP: CUSTOMER DOORSTEP (LOCKED)</span>
@@ -1676,7 +1738,6 @@
           </div>
         `;
       } else {
-        // Customer Section FULLY UNLOCKED
         const isOutForDelivery = trip.orders.some(o => o.status === 'OUT_FOR_DELIVERY');
 
         customerSectionHtml = `
@@ -1794,7 +1855,6 @@
         if (textEl) textEl.textContent = `${remainingSec}s`;
         if (barEl) barEl.style.width = `${(remainingSec / ACCEPT_TIMEOUT_SEC) * 100}%`;
 
-        // If time expired and not yet passed, AUTO-DISPATCH TO NEXT RIDER
         if (remainingSec <= 0 && !timedOutTrips[trip.tripId]) {
           timedOutTrips[trip.tripId] = true;
           passTripToNextRider(trip.tripId, 'Auto-Timeout (45s expired)');
@@ -1802,30 +1862,25 @@
       });
     }
 
-    // Smart Auto-Dispatch: Pass trip and auto-assign to NEXT NEAREST RIDER
     async function passTripToNextRider(tripId, reason) {
       const { activeTrips } = getTripsGrouped();
       const trip = activeTrips.find(t => t.tripId === tripId);
       if (!trip) return;
 
-      showToast('Passing trip and finding next nearest rider...', 'info');
+      showToast('Finding next nearest online rider...', 'info');
 
       try {
-        // 1. Fetch all riders
         const snap = await db.ref('deliveryPartners').once('value');
         const allRiders = snap.val() || {};
 
-        // 2. Identify nearest store coordinates
         const firstOrder = trip.orders[0];
         const store = stores[firstOrder.restaurantId] || {};
         const storeLat = store.lat || riderCurrentLat || 26.4524;
         const storeLng = store.lng || riderCurrentLng || 89.9723;
 
-        // 3. Find eligible online riders (excluding current rider and riders who already declined)
         const eligibleRiders = Object.entries(allRiders).filter(([uid, r]) => {
           if (uid === currentUser.uid) return false;
           if (!r.approved || !r.online) return false;
-          // Check if any order in this trip was already rejected by this rider
           const wasRejected = trip.orders.some(o => o.rejectedByRiders && o.rejectedByRiders[uid]);
           return !wasRejected;
         });
@@ -1845,7 +1900,6 @@
           }
         });
 
-        // 4. Update all orders in this combined trip
         const updatePromises = trip.orders.map(o => {
           const updates = {
             deliveryUid: nextRiderUid || null,
@@ -1868,18 +1922,15 @@
         await Promise.all(updatePromises);
 
         if (nextRiderUid) {
-          showToast(`⚡ Trip auto-dispatched to next nearest rider!`, 'success');
+          showToast(`⚡ Trip auto-assigned to next nearest rider!`, 'success');
         } else {
-          showToast(`Trip passed. No other riders online (sent to Admin).`, 'warning');
+          showToast(`No other riders online (sent to Admin queue).`, 'warning');
         }
       } catch (err) {
         showToast('Error: ' + err.message, 'danger');
       }
     }
 
-    // ==========================================
-    // 8. PROGRESSIVE TRIP ACTIONS
-    // ==========================================
     function acceptUnifiedTrip(tripId) {
       const { activeTrips } = getTripsGrouped();
       const trip = activeTrips.find(t => t.tripId === tripId);
@@ -1898,9 +1949,11 @@
       });
     }
 
+    // 1-Click Store Pickup Confirmation (Code is already matched with store)
     function confirmStoreStopPickup(orderId) {
       db.ref('orders/' + orderId).update({
         status: 'PICKED_UP',
+        storePickupVerifiedAt: Date.now(),
         updatedAt: Date.now()
       }).then(() => {
         showToast('✅ Samaan store se pickup ho gaya!', 'success');
@@ -1928,7 +1981,7 @@
     }
 
     // ==========================================
-    // 9. PIN VERIFICATION & COMPLETE DELIVERY
+    // 8. PIN VERIFICATION & COMPLETE DELIVERY (CUSTOMER PIN)
     // ==========================================
     function openVerifyModalForTrip(tripId, totalAmt, isPrepaid) {
       document.getElementById('verify-modal-trip-id').value = tripId;
@@ -2035,6 +2088,64 @@
     }
 
     // ==========================================
+    // 9. SOS & CANCELLATION UTILITIES
+    // ==========================================
+    function openSosModal(tripId) {
+      document.getElementById('sos-trip-id').value = tripId;
+      document.getElementById('riderSosModal').classList.add('open');
+      window.history.pushState({ modal: 'sos' }, '');
+    }
+
+    function closeSosModal() { document.getElementById('riderSosModal').classList.remove('open'); }
+
+    function submitSosAlert() {
+      const tripId = document.getElementById('sos-trip-id').value;
+      const reason = document.getElementById('sos-reason-select').value;
+      const { activeTrips } = getTripsGrouped();
+      const trip = activeTrips.find(t => t.tripId === tripId);
+      if (!trip) return;
+
+      const promises = trip.orders.map(o => {
+        return db.ref(`orders/${o.orderId}`).update({
+          emergencyAlert: true,
+          emergencyDetails: `Rider update: ${reason}`,
+          updatedAt: Date.now()
+        });
+      });
+
+      Promise.all(promises).then(() => {
+        closeSosModal();
+        showToast('⚠️ Delay broadcasted to Customer and Store!', 'warning');
+      });
+    }
+
+    function openRiderCancelModal(tripId) {
+      document.getElementById('cancel-modal-trip-id').value = tripId;
+      document.getElementById('cancel-modal-order-tag').textContent = `Trip: #${tripId.slice(-6)}`;
+      document.getElementById('rider-cancel-note').value = '';
+
+      const reasonSelect = document.getElementById('rider-cancel-reason-select');
+      reasonSelect.innerHTML = `
+        <option value="Vehicle breakdown / Tyre puncture">Vehicle breakdown / Tyre puncture</option>
+        <option value="Heavy rainfall / Severe waterlogging on route">Heavy rainfall / Waterlogging</option>
+        <option value="Personal emergency / Ending shift">Personal emergency / Ending shift</option>
+        <option value="Customer unreachable / Refused delivery">Customer unreachable / Refused</option>
+      `;
+
+      document.getElementById('riderCancelTripModal').classList.add('open');
+      window.history.pushState({ modal: 'cancelTrip' }, '');
+    }
+
+    function closeRiderCancelModal() { document.getElementById('riderCancelTripModal').classList.remove('open'); }
+
+    function confirmRiderCancelTrip() {
+      const tripId = document.getElementById('cancel-modal-trip-id').value;
+      const reason = document.getElementById('rider-cancel-reason-select').value;
+      closeRiderCancelModal();
+      passTripToNextRider(tripId, reason);
+    }
+
+    // ==========================================
     // 10. FINANCIALS, EARNINGS & COD SETTLEMENT
     // ==========================================
     function getRiderFeeForOrder(order) {
@@ -2085,7 +2196,6 @@
       }
     }
 
-    // --- Payout Request Modal ---
     function openRiderPayoutModal() {
       if (availablePayoutBalance < 10) {
         showToast('Minimum ₹10 balance required for withdrawal!', 'info');
@@ -2160,7 +2270,6 @@
       });
     }
 
-    // --- Cash Deposit Functions ---
     function openDepositModal() {
       if (netCashInHand <= 0) {
         showToast('No COD cash balance to deposit!', 'info');
@@ -2259,7 +2368,10 @@
       if (tabName === 'profile') buttons[2]?.classList.add('active');
 
       currentRiderTab = tabName;
-      if (pushHistory) window.history.pushState({ screen: tabName }, '');
+
+      if (pushHistory) {
+        window.history.pushState({ screen: tabName }, '');
+      }
     }
 
     window.addEventListener('popstate', () => {
