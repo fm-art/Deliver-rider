@@ -216,10 +216,10 @@
       </div>
     </header>
 
-    <!-- CLEAN LIVE GPS BAR -->
+    <!-- LIVE 5-SECOND GPS BAR -->
     <div id="gps-radar-bar">
-      <span><i class="fa-solid fa-satellite-dish fa-spin"></i> LIVE GPS TRACKING ACTIVE</span>
-      <span style="color:#a7f3d0;">Connected</span>
+      <span><i class="fa-solid fa-satellite-dish fa-spin"></i> LIVE GPS (5s AUTO-SYNC)</span>
+      <span id="gps-sync-time" style="color:#a7f3d0;">Connecting...</span>
     </div>
 
     <div id="cash-limit-banner">
@@ -513,7 +513,8 @@
     let currentUser = null, riderData = null;
     let assignedOrders = {}, stores = {}, allSettlements = {}, riderSettlements = {};
     let allRiderPayouts = {}, myRiderPayouts = {}, riderRatingsList = [], myFeedbacks = {};
-    let adminUpiId = "gossaigaonbazar@apl", prevActiveTripCount = null, geoWatchId = null;
+    let adminUpiId = "gossaigaonbazar@apl", prevActiveTripCount = null;
+    let geoWatchId = null, gpsIntervalId = null, isSyncingGps = false;
     let currentDepositMode = "UPI", netCashInHand = 0, totalRiderEarned = 0, totalRiderPaidPayout = 0, availablePayoutBalance = 0;
     let baseRiderFeePerTrip = 25, soundEnabled = true;
 
@@ -524,7 +525,7 @@
 
     let riderCurrentLat = 26.4524, riderCurrentLng = 89.9723;
     let isVerifyingDelivery = false, isSubmittingDeposit = false, isSubmittingPayout = false;
-    let timedOutTrips = {}, pinBruteForceGuard = {};
+    let timedOutTrips = {}, pinBruteForceGuard = {}, lastTrailPoint = null;
 
     function sanitizeText(str) { return String(str || '').replace(/[<>"'`]/g, ''); }
     function isValidIndianMobile(phone) { return /^[6-9]\d{9}$/.test(String(phone || '').replace(/\D/g, '').slice(-10)); }
@@ -532,9 +533,10 @@
     function formatWhatsAppUrl(rawPhone) { const c = String(rawPhone || '').replace(/\D/g, ''); return c ? (c.length === 10 ? '91' + c : c) : ''; }
 
     function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-      if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-      const R = 6371, dLat = (lat2-lat1)*(Math.PI/180), dLon = (lon2-lon1)*(Math.PI/180);
-      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*(Math.PI/180))*Math.cos(lat2*(Math.PI/180))*Math.sin(dLon/2)**2;
+      const aLat = Number(lat1), aLon = Number(lon1), bLat = Number(lat2), bLon = Number(lon2);
+      if (!Number.isFinite(aLat) || !Number.isFinite(aLon) || !Number.isFinite(bLat) || !Number.isFinite(bLon)) return null;
+      const R = 6371, dLat = (bLat - aLat) * (Math.PI / 180), dLon = (bLon - aLon) * (Math.PI / 180);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * (Math.PI / 180)) * Math.cos(bLat * (Math.PI / 180)) * Math.sin(dLon / 2) ** 2;
       return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
@@ -613,17 +615,17 @@
       if (!isValidUpiId(upiId)) { authError.textContent = 'Enter valid UPI ID (e.g. 9876543210@paytm)!'; return; }
 
       auth.createUserWithEmailAndPassword(email, password)
-        .then(cred => db.ref('deliveryPartners/' + cred.user.uid).set({ name, email, phone, upiId, vehicle, approved: false, online: true, lat: 26.4524, lng: 89.9723 }))
+        .then(cred => db.ref('deliveryPartners/' + cred.user.uid).set({ name, email, phone, upiId, vehicle, approved: false, online: true, lat: 26.4524, lng: 89.9723, lastSeen: Date.now() }))
         .catch(err => authError.textContent = err.message);
     });
 
     auth.onAuthStateChanged(user => {
       if (user) { currentUser = user; authScreen.style.display = 'none'; initDeliveryApp(); }
-      else { currentUser = null; riderData = null; if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId); authScreen.style.display = 'flex'; }
+      else { currentUser = null; riderData = null; stopLiveGpsTracking(); authScreen.style.display = 'flex'; }
     });
 
     function riderLogout() {
-      if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
+      stopLiveGpsTracking();
       if (currentUser) db.ref('deliveryPartners/' + currentUser.uid).update({ online: false });
       auth.signOut();
     }
@@ -671,7 +673,11 @@
       db.ref('deliveryPartners/' + currentUser.uid).on('value', snap => {
         riderData = snap.val() || {};
         updateHeaderAndProfileUI();
-        if (riderData.online && riderData.suspended !== true && !geoWatchId) startLiveGpsTracking();
+        if (riderData.online && riderData.suspended !== true) {
+          if (!geoWatchId || !gpsIntervalId) startLiveGpsTracking();
+        } else {
+          stopLiveGpsTracking();
+        }
       });
 
       db.ref('restaurants').on('value', snap => { stores = snap.val() || {}; renderUnifiedTripsFeed(); });
@@ -714,29 +720,104 @@
       setInterval(updateCountdownsAndAutoPass, 1000);
     }
 
+    // 5-SECOND AUTOMATIC LIVE GPS SYNC + MOVEMENT TRAIL
+    function pushRiderCoordinates(rawLat, rawLng) {
+      const lat = Number(Number(rawLat).toFixed(6));
+      const lng = Number(Number(rawLng).toFixed(6));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      riderCurrentLat = lat;
+      riderCurrentLng = lng;
+      const now = Date.now();
+
+      const syncEl = document.getElementById('gps-sync-time');
+      if (syncEl) syncEl.textContent = `Synced ${new Date(now).toLocaleTimeString()}`;
+
+      if (currentUser && riderData?.online && riderData?.suspended !== true) {
+        const riderUpdates = {
+          lat: riderCurrentLat,
+          lng: riderCurrentLng,
+          online: true,
+          lastSeen: now,
+          lastLocationUpdate: now
+        };
+
+        // Keep last 20 movement points so Admin/System knows kaha kaha rider gaya hai
+        const movedKm = lastTrailPoint ? calculateDistanceKm(lastTrailPoint.lat, lastTrailPoint.lng, lat, lng) : 1;
+        if (!lastTrailPoint || (movedKm !== null && movedKm >= 0.015)) {
+          const existingTrail = Array.isArray(riderData.recentRoute) ? riderData.recentRoute : [];
+          const nextTrail = [...existingTrail, { lat: riderCurrentLat, lng: riderCurrentLng, time: now }].slice(-20);
+          riderUpdates.recentRoute = nextTrail;
+          lastTrailPoint = { lat: riderCurrentLat, lng: riderCurrentLng };
+        }
+
+        db.ref('deliveryPartners/' + currentUser.uid).update(riderUpdates);
+
+        // Har 5 second me sabhi active orders par live rider location update karega
+        Object.entries(assignedOrders).forEach(([orderId, o]) => {
+          if (o.status !== 'DELIVERED' && o.status !== 'CANCELLED') {
+            db.ref(`orders/${orderId}`).update({
+              riderLat: riderCurrentLat,
+              riderLng: riderCurrentLng,
+              lastLocationUpdate: now
+            });
+          }
+        });
+      }
+    }
+
+    function syncRiderCurrentLocation() {
+      if (!navigator.geolocation || !currentUser || !riderData || !riderData.online || riderData.suspended === true) return;
+      if (isSyncingGps) return;
+      isSyncingGps = true;
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          isSyncingGps = false;
+          pushRiderCoordinates(pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => {
+          isSyncingGps = false;
+          console.log("5s GPS Sync Error:", err.message);
+          const syncEl = document.getElementById('gps-sync-time');
+          if (syncEl) syncEl.textContent = 'Waiting for GPS...';
+        },
+        { enableHighAccuracy: true, timeout: 4500, maximumAge: 0 }
+      );
+    }
+
     function startLiveGpsTracking() {
       if (!navigator.geolocation) return;
       document.getElementById('gps-radar-bar').style.display = 'flex';
-      geoWatchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          riderCurrentLat = Number(pos.coords.latitude.toFixed(6));
-          riderCurrentLng = Number(pos.coords.longitude.toFixed(6));
-          if (currentUser && riderData?.suspended !== true) {
-            db.ref('deliveryPartners/' + currentUser.uid).update({ lat: riderCurrentLat, lng: riderCurrentLng, online: true, lastSeen: Date.now() });
-          }
-          Object.entries(assignedOrders).forEach(([orderId, o]) => {
-            if (o.status === 'OUT_FOR_DELIVERY') db.ref(`orders/${orderId}`).update({ riderLat: riderCurrentLat, riderLng: riderCurrentLng, lastLocationUpdate: Date.now() });
-          });
-        },
-        (err) => console.log("GPS Error:", err),
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
-      );
+
+      if (!geoWatchId) {
+        geoWatchId = navigator.geolocation.watchPosition(
+          (pos) => pushRiderCoordinates(pos.coords.latitude, pos.coords.longitude),
+          (err) => console.log("GPS Watch Error:", err),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
+        );
+      }
+
+      if (!gpsIntervalId) {
+        syncRiderCurrentLocation();
+        gpsIntervalId = setInterval(() => {
+          syncRiderCurrentLocation();
+        }, 5000);
+      }
     }
 
     function stopLiveGpsTracking() {
       if (geoWatchId) { navigator.geolocation.clearWatch(geoWatchId); geoWatchId = null; }
+      if (gpsIntervalId) { clearInterval(gpsIntervalId); gpsIntervalId = null; }
+      isSyncingGps = false;
       document.getElementById('gps-radar-bar').style.display = 'none';
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && currentUser && riderData?.online && riderData?.suspended !== true) {
+        syncRiderCurrentLocation();
+      }
+    });
 
     function updateHeaderAndProfileUI() {
       if (!riderData) return;
@@ -756,11 +837,16 @@
       else { indicator.classList.remove('is-online'); label.textContent = 'Offline'; stopLiveGpsTracking(); }
 
       document.getElementById('approval-banner').style.display = riderData.approved === true ? 'none' : 'flex';
-      document.getElementById('prof-name').value = riderData.name || '';
-      document.getElementById('prof-email').value = currentUser.email || '';
-      document.getElementById('prof-phone').value = riderData.phone || '';
-      document.getElementById('prof-upi').value = riderData.upiId || '';
-      document.getElementById('prof-vehicle').value = riderData.vehicle || '';
+
+      const setIfUnfocused = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && document.activeElement !== el) el.value = val;
+      };
+      setIfUnfocused('prof-name', riderData.name || '');
+      setIfUnfocused('prof-email', currentUser.email || '');
+      setIfUnfocused('prof-phone', riderData.phone || '');
+      setIfUnfocused('prof-upi', riderData.upiId || '');
+      setIfUnfocused('prof-vehicle', riderData.vehicle || '');
       document.getElementById('hero-rider-upi-display').textContent = riderData.upiId || 'Not Set';
     }
 
@@ -796,10 +882,11 @@
       const newStatus = !riderData.online;
       if (newStatus && netCashInHand >= MAX_ALLOWED_CASH_LIMIT) return showToast(`🛑 Cash Limit ₹${MAX_ALLOWED_CASH_LIMIT} Exceeded! Deposit cash first.`, 'danger');
       if (newStatus) startLiveGpsTracking(); else stopLiveGpsTracking();
-      db.ref('deliveryPartners/' + currentUser.uid).update({ online: newStatus }).then(() => showToast(newStatus ? 'Duty ON: Live GPS active!' : 'Duty OFF: Shift Ended.', newStatus ? 'success' : 'info'));
+      db.ref('deliveryPartners/' + currentUser.uid).update({ online: newStatus, lastSeen: Date.now() })
+        .then(() => showToast(newStatus ? 'Duty ON: Live 5s GPS active!' : 'Duty OFF: Shift Ended.', newStatus ? 'success' : 'info'));
     }
 
-    // MULTI-STORE TRIP GROUPING & PICKUP LOCK GUARD
+    // MULTI-STORE TRIP GROUPING & PICKUP CANCEL LOCK
     function isTripPickedUp(trip) {
       return Boolean(
         trip &&
@@ -897,7 +984,7 @@
       const storeStops = trip.orders.map(o => {
         const st = stores[o.restaurantId] || {};
         const d = (riderCurrentLat && st.lat) ? calculateDistanceKm(riderCurrentLat, riderCurrentLng, st.lat, st.lng) : 999;
-        return { order: o, store: st, distance: d, isPickedUp: (o.status === 'PICKED_UP' || o.status === 'OUT_FOR_DELIVERY') };
+        return { order: o, store: st, distance: (d !== null ? d : 999), isPickedUp: (o.status === 'PICKED_UP' || o.status === 'OUT_FOR_DELIVERY') };
       }).sort((a, b) => (a.isPickedUp !== b.isPickedUp) ? (a.isPickedUp ? 1 : -1) : a.distance - b.distance);
 
       const currentActiveStopIndex = storeStops.findIndex(s => !s.isPickedUp);
@@ -1017,45 +1104,67 @@
       });
     }
 
+    // NEAREST TO STORE RIDER SELECTION ON PASS
     async function passTripToNextRider(tripId, reason) {
       const trip = getTripsGrouped().activeTrips.find(t => t.tripId === tripId); if (!trip) return;
       if (isTripPickedUp(trip)) {
         return showToast('🔒 Store se pickup ke baad order cancel/pass nahi kar sakte!', 'danger');
       }
-      showToast('Finding next nearest online rider...', 'info');
+      showToast('Finding nearest online rider to store...', 'info');
       try {
         const snap = await db.ref('deliveryPartners').once('value'), allRiders = snap.val() || {};
         const store = stores[trip.orders[0].restaurantId] || {};
-        const storeLat = store.lat || riderCurrentLat || 26.4524, storeLng = store.lng || riderCurrentLng || 89.9723;
-        const eligibleRiders = Object.entries(allRiders).filter(([uid, r]) => uid !== currentUser.uid && r.approved && r.online && !r.suspended && !trip.orders.some(o => o.rejectedByRiders && o.rejectedByRiders[uid]));
+        const storeLat = Number(store.lat) || riderCurrentLat || 26.4524;
+        const storeLng = Number(store.lng) || riderCurrentLng || 89.9723;
 
-        let nextRiderUid = null, minDistance = Infinity;
+        const eligibleRiders = Object.entries(allRiders).filter(([uid, r]) =>
+          uid !== currentUser.uid &&
+          r.approved === true &&
+          r.online === true &&
+          r.suspended !== true &&
+          !trip.orders.some(o => o.rejectedByRiders && o.rejectedByRiders[uid])
+        );
+
+        let nextRiderUid = null, minDistance = Infinity, fallbackUid = null;
         eligibleRiders.forEach(([uid, rider]) => {
-          if (rider.lat && rider.lng) {
-            const dist = calculateDistanceKm(storeLat, storeLng, rider.lat, rider.lng);
-            if (dist !== null && dist < minDistance) { minDistance = dist; nextRiderUid = uid; }
-          } else if (!nextRiderUid) nextRiderUid = uid;
+          const rLat = Number(rider.lat), rLng = Number(rider.lng);
+          if (Number.isFinite(rLat) && Number.isFinite(rLng) && rLat !== 0 && rLng !== 0) {
+            const dist = calculateDistanceKm(storeLat, storeLng, rLat, rLng);
+            if (dist !== null && dist < minDistance) {
+              minDistance = dist;
+              nextRiderUid = uid;
+            }
+          } else if (!fallbackUid) {
+            fallbackUid = uid;
+          }
         });
+        if (!nextRiderUid) nextRiderUid = fallbackUid;
 
         await Promise.all(trip.orders.map(o => {
           const updates = { deliveryUid: nextRiderUid || null, riderAccepted: null, riderAcceptedAt: null, assignedAt: nextRiderUid ? Date.now() : null, updatedAt: Date.now() };
           updates[`rejectedByRiders/${currentUser.uid}`] = { riderName: riderData?.name || 'Rider', riderPhone: riderData?.phone || '', reason: reason || 'Declined', timestamp: Date.now() };
           return db.ref('orders/' + o.orderId).update(updates);
         }));
-        showToast(nextRiderUid ? `⚡ Trip passed to next nearest rider!` : `Sent to Admin queue.`, nextRiderUid ? 'success' : 'warning');
+        showToast(nextRiderUid ? `⚡ Trip passed to nearest rider near store!` : `Sent to Admin queue.`, nextRiderUid ? 'success' : 'warning');
       } catch (err) { showToast('Error: ' + err.message, 'danger'); }
     }
 
     function acceptUnifiedTrip(tripId) {
       if (riderData?.suspended === true) return showToast('🚫 Account suspended by Admin!', 'danger');
       const trip = getTripsGrouped().activeTrips.find(t => t.tripId === tripId); if (!trip) return;
-      Promise.all(trip.orders.map(o => db.ref('orders/' + o.orderId).update({ riderAccepted: true, riderAcceptedAt: Date.now(), updatedAt: Date.now() })))
-        .then(() => showToast('🎉 Trip Accepted!', 'success'));
+      Promise.all(trip.orders.map(o => db.ref('orders/' + o.orderId).update({
+        riderAccepted: true, riderAcceptedAt: Date.now(),
+        riderLat: riderCurrentLat, riderLng: riderCurrentLng,
+        lastLocationUpdate: Date.now(), updatedAt: Date.now()
+      }))).then(() => showToast('🎉 Trip Accepted!', 'success'));
     }
 
     function confirmStoreStopPickup(orderId) {
-      db.ref('orders/' + orderId).update({ status: 'PICKED_UP', storePickupVerifiedAt: Date.now(), updatedAt: Date.now() })
-        .then(() => showToast('✅ Order picked up from store! Cancel/Pass ab lock ho gaya hai.', 'success'));
+      db.ref('orders/' + orderId).update({
+        status: 'PICKED_UP', storePickupVerifiedAt: Date.now(),
+        riderLat: riderCurrentLat, riderLng: riderCurrentLng,
+        lastLocationUpdate: Date.now(), updatedAt: Date.now()
+      }).then(() => showToast('✅ Order picked up from store! Cancel/Pass ab lock ho gaya hai.', 'success'));
     }
 
     function startCustomerDoorstepTrip(tripId) {
@@ -1160,7 +1269,7 @@
       passTripToNextRider(tripId, note ? `${reason} (${note})` : reason);
     }
 
-    // FINANCIALS WITH ADMIN LIMITS & WALLET-SAFE COD CALCULATION
+    // FINANCIALS
     function getRiderFeeForOrder(order) {
       return (order && order.deliveryCharge !== undefined && Number(order.deliveryCharge) > 0) ? Number(order.deliveryCharge) : baseRiderFeePerTrip;
     }
