@@ -1,7 +1,9 @@
-import React from 'react';
+import { Capacitor } from '@capacitor/core';
+import React, { useEffect, useState } from 'react';
 import {
   PushPrefs,
   dispatchAdminPushNotification,
+  refreshNotificationPermissionState,
 } from '../utils/pushNotifications';
 
 interface PushNotificationModalProps {
@@ -11,7 +13,10 @@ interface PushNotificationModalProps {
   onClose: () => void;
   onRequestPermission: () => Promise<void>;
   onUpdatePrefs: (next: PushPrefs) => void;
-  onToast: (msg: string, type?: 'success' | 'danger' | 'info' | 'warning') => void;
+  onToast: (
+    msg: string,
+    type?: 'success' | 'danger' | 'info' | 'warning'
+  ) => void;
 }
 
 export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
@@ -23,17 +28,45 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
   onUpdatePrefs,
   onToast,
 }) => {
+  const [livePermission, setLivePermission] = useState<
+    NotificationPermission | 'unsupported'
+  >(permission);
+  const isNative = Capacitor.isNativePlatform();
+
+  useEffect(() => {
+    setLivePermission(permission);
+  }, [permission]);
+
+  useEffect(() => {
+    if (!open) return;
+    void refreshNotificationPermissionState().then((perm) => {
+      setLivePermission(perm);
+    });
+  }, [open]);
+
   if (!open) return null;
 
   const handleToggleKey = (key: keyof PushPrefs) => {
     onUpdatePrefs({ ...prefs, [key]: !prefs[key] });
   };
 
+  const handleEnableClick = async () => {
+    await onRequestPermission();
+    const updated = await refreshNotificationPermissionState();
+    setLivePermission(updated);
+  };
+
   const handleTestPush = async () => {
-    if (permission !== 'granted') {
+    let current = await refreshNotificationPermissionState();
+    setLivePermission(current);
+
+    if (current !== 'granted') {
       await onRequestPermission();
-      return;
+      current = await refreshNotificationPermissionState();
+      setLivePermission(current);
+      if (current !== 'granted') return;
     }
+
     const ok = await dispatchAdminPushNotification({
       title: '🔔 Gossaigaon Bazar Admin Test',
       body: 'Push notifications are active! Tap to open Live Orders Radar.',
@@ -41,9 +74,14 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
       tag: 'gb-admin-test',
     });
     if (ok) {
-      onToast('Test push notification sent to your device!', 'success');
+      onToast('Test notification sent to your device!', 'success');
     } else {
-      onToast('Could not show notification. Check browser site permissions.', 'warning');
+      onToast(
+        isNative
+          ? 'Could not show notification. Allow notifications in Android App Info settings.'
+          : 'Could not show notification. Check browser site permissions.',
+        'warning'
+      );
     }
   };
 
@@ -98,34 +136,38 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
               style={{
                 fontSize: '0.92rem',
                 color:
-                  permission === 'granted'
+                  livePermission === 'granted'
                     ? 'var(--success)'
-                    : permission === 'denied'
+                    : livePermission === 'denied'
                       ? 'var(--danger)'
                       : 'var(--warning)',
               }}
             >
-              {permission === 'granted'
-                ? '✅ Active & Ready (OS + Background)'
-                : permission === 'denied'
-                  ? '❌ Blocked in Browser Settings'
-                  : permission === 'unsupported'
+              {livePermission === 'granted'
+                ? isNative
+                  ? '✅ Active & Ready (Android Native)'
+                  : '✅ Active & Ready (OS + Background)'
+                : livePermission === 'denied'
+                  ? isNative
+                    ? '❌ Blocked in Android App Settings'
+                    : '❌ Blocked in Browser Settings'
+                  : livePermission === 'unsupported'
                     ? '⚠️ Not Supported in This Browser'
                     : '⏳ Permission Not Granted Yet'}
             </strong>
           </div>
-          {permission !== 'granted' && permission !== 'unsupported' && (
+          {livePermission !== 'granted' && livePermission !== 'unsupported' && (
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              onClick={onRequestPermission}
+              onClick={() => void handleEnableClick()}
             >
               <i className="fa-solid fa-bell"></i> Enable Push
             </button>
           )}
         </div>
 
-        {permission === 'denied' && (
+        {livePermission === 'denied' && (
           <div
             style={{
               background: '#fef2f2',
@@ -137,7 +179,9 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
               color: '#991b1b',
             }}
           >
-            Notifications are currently blocked. Open browser Site Settings (lock icon in address bar) and allow Notifications for this app.
+            {isNative
+              ? 'Notifications are blocked. Open Android Settings -> Apps -> GB Admin -> Notifications and turn them ON.'
+              : 'Notifications are currently blocked. Open browser Site Settings (lock icon in address bar) and allow Notifications for this app.'}
           </div>
         )}
 
@@ -170,7 +214,9 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
             />
           </div>
           <div className="toggle-row">
-            <label htmlFor="push-products">📦 New Products Pending Approval</label>
+            <label htmlFor="push-products">
+              📦 New Products Pending Approval
+            </label>
             <input
               type="checkbox"
               id="push-products"
@@ -179,7 +225,9 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
             />
           </div>
           <div className="toggle-row">
-            <label htmlFor="push-payouts">💳 Wallet, Rider &amp; Store Payout Requests</label>
+            <label htmlFor="push-payouts">
+              💳 Wallet, Rider &amp; Store Payout Requests
+            </label>
             <input
               type="checkbox"
               id="push-payouts"
@@ -188,7 +236,9 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
             />
           </div>
           <div className="toggle-row">
-            <label htmlFor="push-sos">🚨 Helpline Tickets &amp; Rider SOS Alerts</label>
+            <label htmlFor="push-sos">
+              🚨 Helpline Tickets &amp; Rider SOS Alerts
+            </label>
             <input
               type="checkbox"
               id="push-sos"
@@ -203,7 +253,7 @@ export const PushNotificationModal: React.FC<PushNotificationModalProps> = ({
             type="button"
             className="btn btn-info"
             style={{ flex: 1 }}
-            onClick={handleTestPush}
+            onClick={() => void handleTestPush()}
           >
             <i className="fa-solid fa-paper-plane"></i> Send Test Notification
           </button>
