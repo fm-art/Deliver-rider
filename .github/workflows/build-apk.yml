@@ -50,14 +50,23 @@ jobs:
           fi
           npx cap sync android
 
-      - name: Apply App Icon from public/pwa-512x512.png
-        continue-on-error: true
+      - name: Apply App Icon
         run: |
-          if [ -f "public/pwa-512x512.png" ]; then
-            mkdir -p assets
-            cp public/pwa-512x512.png assets/icon-only.png
-            cp public/pwa-512x512.png assets/icon-foreground.png
-            npx --yes @capacitor/assets generate --android --iconBackgroundColor '#060911'
+          ICON_SRC="public/pwa-512x512.png"
+          MASK_SRC="public/pwa-maskable-512x512.png"
+          if [ -f "$ICON_SRC" ]; then
+            for dir in android/app/src/main/res/mipmap-*dpi; do
+              if [ -d "$dir" ]; then
+                cp "$ICON_SRC" "$dir/ic_launcher.png"
+                cp "$ICON_SRC" "$dir/ic_launcher_round.png"
+                if [ -f "$MASK_SRC" ]; then
+                  cp "$MASK_SRC" "$dir/ic_launcher_foreground.png"
+                else
+                  cp "$ICON_SRC" "$dir/ic_launcher_foreground.png"
+                fi
+                cp "$ICON_SRC" "$dir/ic_launcher_background.png"
+              fi
+            done
           fi
 
       - name: Build Debug APK
