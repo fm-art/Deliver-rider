@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
+import {
+  initNativeNotifications,
+  refreshNotificationPermissionState,
+} from './utils/pushNotifications';
 
 (window as unknown as { gm_authFailure?: () => void }).gm_authFailure = () => {
   window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
@@ -16,6 +20,8 @@ console.error = (...args: unknown[]) => {
     window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
   }
 };
+
+void initNativeNotifications().then(() => refreshNotificationPermissionState());
 
 const updateSW = registerSW({
   immediate: true,
